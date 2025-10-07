@@ -1,4 +1,9 @@
-import numpy as np
+# ///////////////////////////////////////////////////////////////////////////////////////////////
+# // Zhongzheng He, PhD, ICube, Université de Strasbourg, Strasbourg, France
+# // Contact: zhongzheng.he@unistra.fr
+# ///////////////////////////////////////////////////////////////////////////////////////////////
+
+
 import numpy as np
 from numpy.linalg import pinv
 from joblib import Parallel, delayed
@@ -8,31 +13,72 @@ import os
 import cc3d
 from scipy.optimize import minimize
 from numba import njit
-# last modified on 03/09/2025
+
 
 def Phase_based_EPT_With_Uncertainty_Quantification(PhiTR, Ref, kernel_size=[5,5,5], shape="cube", thresh=0.1, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
-    """
-    Laplacian verison of Phase-based EPT:  conductivity = PhiTR_Lap / (2*mu0*omega)
-    where PhiTR_Lap is the Laplacian of transceive phase.
-    
-    The Laplacian value is estimated by the adaptive 2nd order Savitzky-Golay filter in a cube/ellipse/cross window.
-    The local kernel shape is anatomically adpated to the Ref image: only the voxels whose relative contrast
-    with respect to the central voxel is lower than thresh (default= 0.1) are kept in the kernel.
+       """Reconstructs electrical conductivity and its uncertainty using phase-based EPT.
 
-     The uncertainty conductivity is quantified from covariation matrix of the SG fitted coefficients using the uncertainty propagation ( std_sigma = sqrt(J @ cov_C @ J.T))
+    This function implements the Laplacian version of phase-based Electrical
+    Properties Tomography (EPT), where conductivity is derived from the
+    transceive phase (PhiTR) using the relation:
+    sigma = Laplacian(PhiTR) / (2 * mu0 * omega).
 
-    INPUTS:
-    PhiTR: transceive phase image
-    Ref: Magnitude or tissue segmentation
-    shape: 'cube'/'ellipse'/'cross'
-    thresh: 0.1 default
-    h: [dx, dy, dz] : spacing of x, y, z, respectively
-    ROI: Region of Interest mask (optional)
-    n_jobs: Number of parallel jobs (default: -1, uses all available cores)
+    The Laplacian is estimated at each voxel using a 2nd order Savitzky-Golay
+    filter. A key feature is the anatomically-adaptive kernel, which conforms
+    to the local tissue structure. The kernel is shaped by including only
+    neighboring voxels from the reference image (`Ref`) that have a similar
+    intensity to the central voxel, defined by `thresh`. This adaptation
+    minimizes filtering across different tissue boundaries, improving accuracy.
 
-    OUTPUTS:
-    sigma: reconstructed conductivity map [S/m]
-    uncertainty: standard deviation map of reconstructed conductivity (based on the variance of estimated Lapacian)
+    Furthermore, the function quantifies the voxel-wise uncertainty of the
+    conductivity reconstruction. This is achieved by propagating the statistical
+    error from the Savitzky-Golay polynomial fit to the final conductivity
+    value, providing a standard deviation map that serves as a confidence
+    metric for the reconstruction.
+
+    The computation is parallelized using Joblib to accelerate processing on
+    multi-core systems.
+
+    Parameters
+    ----------
+    PhiTR : numpy.ndarray
+        3D array of the transceive phase image in radians.
+    Ref : numpy.ndarray
+        3D reference image for anatomical guidance, such as a magnitude image
+        or a tissue segmentation map.
+    kernel_size : list of int, optional
+        Dimensions [kx, ky, kz] of the Savitzky-Golay filter kernel. All
+        values must be odd. Default is [5, 5, 5].
+    shape : {'cube', 'ellipse', 'cross'}, optional
+        The base shape of the kernel before anatomical adaptation.
+        Default is 'cube'.
+    thresh : float, optional
+        Threshold for anatomical adaptation (0 to 1). Only voxels in the
+        `Ref` image with a relative intensity difference below this threshold
+        (compared to the kernel's central voxel) are included in the fit.
+        Default is 0.1.
+    omega : float, optional
+        Larmor frequency in rad/s (i.e., 2 * pi * frequency).
+        Default is 128e6 * 2 * np.pi, corresponding to a 3T scanner.
+    h : list of float, optional
+        Voxel spacing [dx, dy, dz] in meters. If None, assumes an isotropic
+        voxel size of 1 mm. Default is None.
+    ROI : numpy.ndarray, optional
+        3D binary mask defining the Region of Interest. If None, the ROI is
+        automatically generated from non-zero voxels in the `Ref` image.
+        Default is None.
+    n_jobs : int, optional
+        Number of CPU cores to use for parallel processing.
+        -1 means using all available cores. Default is -1.
+
+    Returns
+    -------
+    sigma : numpy.ndarray
+        The reconstructed 3D electrical conductivity map in Siemens/meter (S/m).
+    uncertainty : numpy.ndarray
+        A 3D map of the standard deviation of the reconstructed conductivity,
+        representing the voxel-wise uncertainty of the estimation.
+
     """
     start_time = time.time()
     mu0       =  4*np.pi*1E-7
@@ -136,7 +182,6 @@ def Phase_based_EPT_With_Uncertainty_Quantification(PhiTR, Ref, kernel_size=[5,5
         return  calculate_conductivity_and_uncertainty(F_adap, C, PhiTR_patch_in_shape, J,coeff)
     
 
-
     print("Processing...")
     results = Parallel(n_jobs=n_jobs)(delayed(process_patch)(j)
         for j in tqdm(range(len(Indx)), desc="Processing Patches", ncols=100, position=0, leave=True))
@@ -149,10 +194,7 @@ def Phase_based_EPT_With_Uncertainty_Quantification(PhiTR, Ref, kernel_size=[5,5
     
     uncertainty = np.zeros_like(PhiTR)
     uncertainty[Indices] = temp_uncertainty
-
-    
     uncertainty += np.abs(np.minimum(sigma,0)) + np.maximum(sigma-2.5,0)
-    uncertainty *= ROI
 
     sigma = sigma[kx_radii:-kx_radii, ky_radii:-ky_radii, kz_radii:-kz_radii]
     uncertainty = uncertainty[kx_radii:-kx_radii, ky_radii:-ky_radii, kz_radii:-kz_radii]
@@ -161,7 +203,8 @@ def Phase_based_EPT_With_Uncertainty_Quantification(PhiTR, Ref, kernel_size=[5,5
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
     return sigma, uncertainty
  
-def imrescale(image, new_min=0, new_max=1,ROI=None): # Intensity normalization to [0,1]
+def imrescale(image, new_min=0, new_max=1,ROI=None): 
+    # Intensity normalization to [0,1]
     if ROI is not None:
         ROI= ROI>0;
         old_min, old_max = np.min(image[ROI]), np.max(image[ROI])

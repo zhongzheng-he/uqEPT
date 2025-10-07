@@ -1,3 +1,8 @@
+# ///////////////////////////////////////////////////////////////////////////////////////////////
+# // Zhongzheng He, PhD, ICube, Université de Strasbourg, Strasbourg, France
+# // Contact: zhongzheng.he@unistra.fr
+# ///////////////////////////////////////////////////////////////////////////////////////////////
+
 import numpy as np
 from scipy.ndimage import label, convolve
 from joblib import Parallel, delayed
@@ -8,8 +13,47 @@ import cc3d
 
 # last modified on 03/09/2025
 def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
-    """
-    3D Median filter with an adaptive kernel with cube/ellipse/cross shape (restricted with segmentation).
+       """Applies a 3D anatomically-adaptive median filter.
+
+    At each voxel, the filter considers a local neighborhood defined by
+    `kernel_size` and a base `shape`. However, only the voxels within this
+    neighborhood that have a similar intensity in the `Ref` image to the
+    central voxel are included in the median calculation. The similarity is
+    controlled by the `thresh` parameter. This ensures that the filtering is
+    primarily performed within homogeneous regions, reducing blurring across
+    anatomical boundaries.
+
+    Parameters
+    ----------
+    Im : numpy.ndarray
+        The 3D input image to be filtered.
+    Ref : numpy.ndarray
+        3D reference image for anatomical guidance, such as a magnitude image
+        or a tissue segmentation map.
+    kernel_size : list of int, optional
+        Dimensions [kx, ky, kz] of the filter kernel. All values must be odd.
+        Default is [3, 3, 3].
+    shape : {'cube', 'ellipse', 'cross'}, optional
+        The base shape of the kernel before anatomical adaptation.
+        Default is 'cube'.
+    thresh : float, optional
+        Threshold for anatomical adaptation (0 to 1). Only voxels in the
+        `Ref` image with a relative intensity difference below this threshold
+        (compared to the kernel's central voxel) are included in the median
+        calculation. Default is 0.1.
+    ROI : numpy.ndarray, optional
+        3D binary mask defining the Region of Interest. Filtering is only
+        applied within this region. If None, the ROI is automatically
+        generated from non-zero voxels in the `Ref` image. Default is None.
+    n_jobs : int, optional
+        Number of CPU cores to use for parallel processing.
+        -1 means using all available cores. Default is -1.
+
+    Returns
+    -------
+    numpy.ndarray
+        The 3D filtered image with the same dimensions as the input `Im`.
+
     """
 
     cpu_cores = os.cpu_count()

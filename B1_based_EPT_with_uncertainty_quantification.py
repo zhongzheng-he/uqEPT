@@ -1,3 +1,8 @@
+# ///////////////////////////////////////////////////////////////////////////////////////////////
+# // Zhongzheng He, PhD, ICube, Université de Strasbourg, Strasbourg, France
+# // Contact: zhongzheng.he@unistra.fr
+# ///////////////////////////////////////////////////////////////////////////////////////////////
+
 import numpy as np
 from numpy.linalg import pinv
 from joblib import Parallel, delayed
@@ -10,33 +15,77 @@ from numba import njit
 # last modified on 03/09/2025
 
 def B1_based_EPT_With_Uncertainty_Quantification(B, Ref, kernel_size=[5,5,5], shape="cube", thresh=0.1, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
-    """
-    Adaptive Savitzky-Golay B1-based EPT with Bivariate Uncertainty Quantification
-    B1-based EPT:  admittivity= Laplacian of B/(1j*mu0*omega*B)
-                   conductivity = real(admittivity)
-                   permittivity = imag(admittivity)/omega/eps_0
-    The B can be the complex B1+ field for the standard Helmholtz EPT or the sqaure root of complex UTE/ZTE image for Image-based EPT. 
+    """Reconstructs electrical properties with bivariate uncertainty quantification.
 
-    The Laplacian value is estimated by the adaptive 2nd order Savitzky-Golay (SG) filter in a cube/ellipse/cross window.
-    The local kernel shape is anatomically adpated to the Ref image: only the voxels whose relative contrast
-    with respect to the central voxel is lower than thresh (default= 0.1) are kept in the kernel.
+    This function implements B1-based or Image-based Electrical Properties Tomography (EPT)
+    to reconstruct conductivity and permittivity maps from a complex B field.
+    The reconstruction is based on the Helmholtz equation for admittivity (kappa):
+    kappa = Laplacian(B) / (j * mu0 * omega * B).
+    Conductivity is the real part of kappa, and relative permittivity is
+    derived from its imaginary part.
 
-    The uncertainty conductivity/permittivity is quantified from the bivariate (real/imaginary) treatment of uncertainty propagation (cov_kappa = J_biv @ cov_C_bivariate @ J_biv.T)
+    The Laplacian of the complex field `B` is estimated using an anatomically-
+    adaptive 2nd order Savitzky-Golay (SG) filter. The filter's kernel adapts
+    to local tissue structures defined by a reference image (`Ref`), minimizing
+    fitting errors across tissue boundaries by including only voxels with
+    similar intensities (controlled by `thresh`).
 
-    INPUTS:
-    B: complex B1+ field or sqrt(complex image of UTE/ZTE)
-    Ref: Magnitude or tissue segmentation
-    shape: 'cube'/'ellipse'/'cross'
-    thresh: 0.1 default
-    h: [dx, dy, dz] : spacing of x, y, z, respectively
-    ROI: Region of Interest mask (optional)
-    n_jobs: Number of parallel jobs (default: -1, uses all available cores)
+    A key feature of this function is its advanced uncertainty quantification.
+    It employs a bivariate statistical approach that treats the real and
+    imaginary components of the SG coefficients as separate variables. This
+    allows for a more accurate propagation of statistical errors from the
+    complex-valued SG fit to the final real-valued conductivity and
+    permittivity maps, yielding robust uncertainty estimates.
 
-    OUTPUTS:
-    sigma: reconstructed conductivity map [S/m]
-    epsilon: relative permittivity
-    unc_sigma: standard deviation map of reconstructed conductivity based on the covariance of the SG fitted coefficients.
-    unc_epsilon: standard deviation map of reconstructed relative permittivity based on the covariance of the SG fitted coefficients.
+    The process is computationally intensive and is therefore parallelized
+    to leverage multi-core processors for efficient execution.
+
+    Parameters
+    ----------
+    B : numpy.ndarray
+        3D complex-valued array. This can be the transmit B1+ field or the
+        square root of a complex image from UTE/ZTE sequences.
+    Ref : numpy.ndarray
+        3D reference image for anatomical guidance, such as a magnitude image
+        or a tissue segmentation map.
+    kernel_size : list of int, optional
+        Dimensions [kx, ky, kz] of the Savitzky-Golay filter kernel. All
+        values must be odd. Default is [5, 5, 5].
+    shape : {'cube', 'ellipse', 'cross'}, optional
+        The base shape of the kernel before anatomical adaptation.
+        Default is 'cube'.
+    thresh : float, optional
+        Threshold for anatomical adaptation (0 to 1). Only voxels in the
+        `Ref` image with a relative intensity difference below this threshold
+        (compared to the kernel's central voxel) are included in the fit.
+        Default is 0.1.
+    omega : float, optional
+        Larmor frequency in rad/s (i.e., 2 * pi * frequency).
+        Default is 128e6 * 2 * np.pi, corresponding to a 3T scanner.
+    h : list of float, optional
+        Voxel spacing [dx, dy, dz] in meters. If None, assumes an isotropic
+        voxel size of 1 mm. Default is None.
+    ROI : numpy.ndarray, optional
+        3D binary mask defining the Region of Interest. If None, the ROI is
+        automatically generated from non-zero voxels in the `Ref` image.
+        Default is None.
+    n_jobs : int, optional
+        Number of CPU cores to use for parallel processing.
+        -1 means using all available cores. Default is -1.
+
+    Returns
+    -------
+    sigma : numpy.ndarray
+        The reconstructed 3D electrical conductivity map in Siemens/meter (S/m).
+    epsilon : numpy.ndarray
+        The reconstructed 3D relative permittivity map (unitless).
+    unc_sigma : numpy.ndarray
+        A 3D map of the standard deviation for the conductivity, quantifying
+        the voxel-wise uncertainty.
+    unc_epsilon : numpy.ndarray
+        A 3D map of the standard deviation for the relative permittivity,
+        quantifying the voxel-wise uncertainty.
+
     """
     start_time = time.time()
 

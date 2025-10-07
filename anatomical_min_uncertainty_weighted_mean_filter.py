@@ -1,43 +1,72 @@
+# ///////////////////////////////////////////////////////////////////////////////////////////////
+# // Zhongzheng He, PhD, ICube, Université de Strasbourg, Strasbourg, France
+# // Contact: zhongzheng.he@unistra.fr
+# ///////////////////////////////////////////////////////////////////////////////////////////////
+
+
 import numpy as np
 from joblib import Parallel, delayed
 from tqdm import tqdm  # For progress bar
 import time
 import os
 import cc3d
-import warnings
+
 # last modified on 08/09/2025 by Zhongzheng He 
 
 def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
-    """  
-    3D anatomical weighted mean filter that selects from the most reliable (lowest uncertainty) voxels with weights = 1/uncertaity.
-    
-    This filter combines magnitude/segmentation information with uncertainty estimates to perform
-    edge-preserving denoising. The kernel adapts to tissue boundaries and selects the value
-    from the first quartile of voxels with the lowest uncertainty and then averages with weights = 1/uncertaity.
+    """Applies a 3D filter using an anatomically-guided, uncertainty-based selection.
+
+    This advanced filter is designed for edge-preserving denoising by leveraging
+    both anatomical information and a voxel-wise uncertainty map. For each voxel,
+    it first defines a local neighborhood that is structurally adapted to respect
+    tissue boundaries (using `Ref` and `thresh`).
+
+    Within this anatomically-constrained kernel, the function identifies the 25%
+    of voxels that have the lowest uncertainty. It then calculates a weighted
+    average of the values from *only this subset* of most reliable voxels. The
+    weights are inversely proportional to the square of the uncertainty
+    (1/uncertainty²), giving a strong preference to the most confident
+    measurements. This dual approach of anatomical guidance and reliability-based
+    selection makes the filter highly effective at reducing noise while preserving
+    fine details.
+
+    Parameters
+    ----------
+    Im : numpy.ndarray
+        The 3D input image to be filtered.
+    Ref : numpy.ndarray
+        3D reference image for anatomical guidance, such as a magnitude image
+        or a tissue segmentation map.
+    uncertainty : numpy.ndarray
+        A 3D map of the same shape as `Im`. Each voxel's value represents the
+        uncertainty (e.g., standard deviation) of the corresponding voxel in `Im`.
+    kernel_size : list of int, optional
+        Dimensions [kx, ky, kz] of the filter kernel. All values must be odd.
+        Default is [3, 3, 3].
+    shape : {'cube', 'ellipse', 'cross'}, optional
+        The base shape of the kernel before anatomical adaptation.
+        Default is 'cube'.
+    thresh : float, optional
+        Threshold for anatomical adaptation (0 to 1). Only voxels in the
+        `Ref` image with a relative intensity difference below this threshold
+        (compared to the kernel's central voxel) are included in the
+        filtering process. Default is 0.1.
+    ROI : numpy.ndarray, optional
+        3D binary mask defining the Region of Interest. Filtering is only
+        applied within this region. If None, the ROI is automatically
+        generated from non-zero voxels in the `Ref` image. Default is None.
+    n_jobs : int, optional
+        Number of CPU cores to use for parallel processing.
+        -1 means using all available cores. Default is -1.
+
+    Returns
+    -------
+    Im_min_unc : numpy.ndarray
+        The 3D filtered image, with the same dimensions as the input `Im`.
 
 
-    INPUTS:
-    Im: Input image
-    Ref: Magnitude Image or tissue segmentation map
-    uncertainty: uncertainty image (e.g. std image of condutivity or relative permittivity)
-    shape: 'cube'/'ellipse'/'cross'
-    thresh: 0.1 default
-    h: [dx, dy, dz] : spacing of x, y, z, respectively
-    ROI: Region of Interest mask (optional)
-    n_jobs: Number of parallel jobs (default: -1, uses all available cores)
 
-    OUTPUTS:
-    Im_min_unc: filtered image
-
-
-    Notes
-    -----
-    The algorithm works by:
-    1. Creating an adaptive kernel that respects tissue boundaries using the reference image
-    2. Selecting voxels within the kernel that have similar intensity to the center voxel (thresh =0.1)
-    3. Average the value of the first quartile of voxels with the lowest uncertainty with weights = 1/uncertaity.
-
-    """ 
+    """
     cpu_cores = os.cpu_count()
     if n_jobs==-1:
         n_jobs=cpu_cores

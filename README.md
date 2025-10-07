@@ -9,7 +9,7 @@ Rigorous Uncertainty Quantification for Helmholtz-based EPT: Application to Unce
 
 
 ## Requirements
-You will need Python 3 and the following packages. You can install them all with a single `pip` or "conda" command:
+You will need Python 3 and the following packages. You can install them all with a single `pip` or 'conda' command:
 
 ```bash
 pip install numpy scipy joblib tqdm numba connected-components-3d

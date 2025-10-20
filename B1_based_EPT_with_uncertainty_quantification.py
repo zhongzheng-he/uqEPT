@@ -209,19 +209,58 @@ def B1_based_EPT_With_Uncertainty_Quantification(B, Ref, kernel_size=[5,5,5], sh
     unc_epsilon = np.zeros_like(B,dtype=float)
     unc_epsilon[Indices] = temp_unc_epsilon
     
-    #add uncertainty if conductivity/permittivity is negative or too high which is not physically confident
-    unc_sigma += np.abs(np.minimum(sigma,0)) + np.maximum(sigma-2.5,0)
-    unc_epsilon += np.abs(np.minimum(epsilon-1,0)) + np.maximum(epsilon-100,0)
-    
     crop_slice = (slice(kx_radii, -kx_radii), slice(ky_radii, -ky_radii), slice(kz_radii, -kz_radii))
     sigma, unc_sigma= sigma[crop_slice], unc_sigma[crop_slice]
     epsilon,unc_epsilon = epsilon[crop_slice], unc_epsilon[crop_slice]
+
+    unc_sigma=unc_penalization(sigma,unc_sigma,Rmin=0,Rmax=2.5)
+    unc_epsilon=unc_penalization(epsilon,unc_epsilon,Rmin=1,Rmax=100)
     unc_epsilon = unc_epsilon * ROI[crop_slice]
     
 
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
     return sigma, epsilon, unc_sigma, unc_epsilon
     
+def unc_penalization(mean, unc, Rmin=0, Rmax=2.5, k=1.0):
+    """
+    Corrects the uncertainty for non-biophysical results based on a coverage interval.
+
+    A penalty is applied only if the k-sigma confidence interval of a measurement
+    does not overlap with the plausible biophysical range [Rmin, Rmax]. The
+    uncertainty is then increased to the minimum value required for the interval
+    to touch the edge of the plausible range.
+
+    Args:
+        mean (np.ndarray): The map of estimated mean values (e.g., conductivity).
+        unc (np.ndarray): The map of estimated uncertainties (std. dev.).
+        Rmin (float): The minimum plausible biophysical value.
+        Rmax (float): The maximum plausible biophysical value.
+        k : The factor for the confidence interval (e.g., 1.0 for ~68%, 2.0 for ~98%).
+
+    Returns:
+        np.ndarray: The corrected uncertainty map.
+    """
+    # Create a copy to avoid modifying the original array in place
+    corrected_unc = unc.copy()
+
+    # --- Case 1: Value is TOO HIGH ---
+    # Condition: The lower bound of the confidence interval is above the max plausible value.
+    idx_high = (mean - k * corrected_unc) > Rmax
+    
+    # Correction: Set uncertainty to the distance from the mean to the max plausible value.
+    # Using abs() makes it robust against any edge cases.
+    corrected_unc[idx_high] = np.abs(mean[idx_high] - Rmax) / k
+
+    # --- Case 2: Value is TOO LOW ---
+    # Condition: The upper bound of the confidence interval is below the min plausible value.
+    idx_low = (mean + k * corrected_unc) < Rmin
+    
+    # Correction: Set uncertainty to the distance from the mean to the min plausible value.
+    corrected_unc[idx_low] = np.abs(Rmin - mean[idx_low]) / k
+
+    return corrected_unc
+
+
 
 def imrescale(image, new_min=0, new_max=1,ROI=None): # Intensity normalization to [0,1]
     if ROI is not None:

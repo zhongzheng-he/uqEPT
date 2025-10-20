@@ -64,9 +64,6 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
     -------
     Im_min_unc : numpy.ndarray
         The 3D filtered image, with the same dimensions as the input `Im`.
-
-
-
     """
     cpu_cores = os.cpu_count()
     if n_jobs==-1:
@@ -83,7 +80,6 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
     kx_radii, ky_radii, kz_radii = (kx - 1) // 2, (ky - 1) // 2, (kz - 1) // 2
 
     start_time = time.time()
-
 
     Im = np.pad(Im, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
     Ref = np.pad(Ref, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
@@ -108,7 +104,6 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
     y = y - ky_radii
     z = z - kz_radii
 
-
     if shape == "cube":
         Shape = np.ones((kx, ky, kz), dtype=bool)
     elif shape == "cross":
@@ -120,7 +115,6 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
         Shape = (x / kx_radii) ** 2 + (y / ky_radii) ** 2 + (z /kz_radii) ** 2 <= 1
     else:
         raise ValueError('Please specify shape = "ellipse"/"cube"/"cross"')
-
 
     def process_patch(j):
         indx = slice(Indx[j] - kx_radii, Indx[j] + kx_radii + 1)
@@ -144,18 +138,17 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
         Im_patch_in_shape = Im_patch.flatten()[ind]
         uncertainty_patch_in_shape =  uncertainty_patch.flatten()[ind] 
 
-        if np.all(uncertainty_patch_in_shape==np.inf):
-            return np.nanmedian(Im_patch_in_shape)
-        else:
-            #replacing inf by 1e6 to avoid division by 0
-            uncertainty_patch_in_shape[np.isinf(uncertainty_patch_in_shape)] = 1e6
-            # ---  find Indices of the 1st-quartile-lowest uncertainties ---
-            idx_sorted = np.argsort(uncertainty_patch_in_shape)[:np.maximum(np.int32(len(ind)/4),1)] 
-
-            w = 1/(uncertainty_patch_in_shape[idx_sorted]**2)
-  
-            return np.sum(Im_patch_in_shape[idx_sorted]*w) / np.sum(w)
+        # --- find Indices of the 1st-quartile-lowest uncertainties ---
+        idx_sorted = np.argsort(uncertainty_patch_in_shape)[:np.maximum(np.int32(len(ind)/4), 1)]
         
+        uncertainty_selected = uncertainty_patch_in_shape[idx_sorted]
+        w = 1 / (uncertainty_selected**2)
+        denominator = np.sum(w)
+        
+        if np.isnan(denominator) or np.isinf(denominator) or (denominator < 1e-10):
+            return np.nanmedian(Im_patch_in_shape[idx_sorted])
+        else:
+            return np.sum(Im_patch_in_shape[idx_sorted] * w) / denominator
       
     print("Processing...")
     temp_min_unc = Parallel(n_jobs=n_jobs)(

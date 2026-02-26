@@ -5,7 +5,9 @@
 Uncertainty Quantification of Helmholtz-based Electrical Properties Tomography and its application to Uncertainty-Guided Post-processing
 
 **Reference**:
-Rigorous Uncertainty Quantification for Helmholtz-based EPT: Application to Uncertainty-Guided Post-processing, Z He, J Lamy, A Arduino, L Zilberti, P Loureiro de Sousa, ISMRM 2026
+He Z, Lamy J, Arduino A, Zilberti L, Loureiro de Sousa P. Rigorous Uncertainty Quantification for Helmholtz-based EPT: Application to Uncertainty-Guided Post-processing. In: Cape Town - 2026 ISMRM-ISMRT Annual Meeting and Exhibition. Cape Town, South Africa: ISMRM; 2026. 
+
+Abstract download link:  <https://hal.science/hal-05493748v1/file/Abstract%20%2300099.pdf>
 
 
 ## Requirements

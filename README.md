@@ -26,7 +26,7 @@ Description
 
 This Python toolkit contains:
 
-### Raw EPT Reconstcuion + Uncertainty Qantification 
+### Raw EPT Reconstcuion (phase-based/complex B1-based) + Uncertainty Qantification 
 * **Phase_based_EPT_With_Uncertainty_Quantification**: reconstructs conductivity from transceive phase via an anatomically-adaptive Savitzky-Golay filter + uncertainty map
   ```python
     sigma, unc_sigma = Phase_based_EPT_With_Uncertainty_Quantification(
@@ -39,7 +39,7 @@ This Python toolkit contains:
     h=[0.001, 0.001, 0.001], # 1mm isotropic voxel size
     ROI= ROI)
   ```
-* **B1_based_EPT_With_Uncertainty_Quantification**: reconstructs conductivity and permittivity from complex B field via an anatomically-adaptive Savitzky-Golay filter + uncertainty maps
+* **B1_based_EPT_With_Uncertainty_Quantification**: reconstructs conductivity and permittivity from complex B field ( $|B_1^+|e^{\varphi_{tr}/2}$ for standard Helmholtz-based EPT or $\sqrt{S_{UTE}}$ for Image-based EPT) via an anatomically-adaptive Savitzky-Golay filter + uncertainty maps
   ```python
     sigma, epsilon, unc_sigma, unc_epsilon = B1_based_EPT_With_Uncertainty_Quantification(
     B, # complex B field: |B_1^+|*np.exp(transceive_phase/2) for standard Helmholtz-based EPT or np.sqrt(|M_UTE|)*np.exp(phase_UTE/2) for Image-based EPT

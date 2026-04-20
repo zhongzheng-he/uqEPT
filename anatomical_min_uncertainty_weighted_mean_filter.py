@@ -140,10 +140,15 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
 
         # --- find Indices of the 1st-quartile-lowest uncertainties ---
         idx_sorted = np.argsort(uncertainty_patch_in_shape)[:np.maximum(np.int32(len(ind)/4), 1)]
+    
+        # if there is only one selected voxel 
+        if len(idx_sorted) == 1:
+            return Im_patch_in_shape[idx_sorted].item()
         
-        uncertainty_selected = uncertainty_patch_in_shape[idx_sorted]
-        w = 1 / (uncertainty_selected**2)
-        denominator = np.sum(w)
+        uncertainty_selected = uncertainty_patch_in_shape[idx_sorted]  
+        with np.errstate(divide='ignore', invalid='ignore'):
+            w = 1 / (uncertainty_selected**2)
+            denominator = np.sum(w)
         
         if np.isnan(denominator) or np.isinf(denominator) or (denominator < 1e-10):
             return np.nanmedian(Im_patch_in_shape[idx_sorted])

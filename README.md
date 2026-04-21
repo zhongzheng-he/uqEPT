@@ -66,7 +66,7 @@ This Python toolkit contains:
 
 * **anatomical_min_uncertainty_weighted_mean_filter**: an advanced adaptive filter that combines anatomical guidance with a reliability-based selection criterion. Within an anatomically-constrained kernel, it identifies the 25% of voxels with the lowest uncertainty and computes a weighted average from only this subset. The weights are inversely proportional to the square of the uncertainty (1/uncertainty²), making it highly effective at suppressing noise while trusting the most reliable data points.
   ```python
-     sigma_f_min_unc=anatomical_median_filter(
+     sigma_f_min_unc=anatomical_min_uncertainty_weighted_mean_filter(
       sigma, # reconstructed conductivity map
       Ref=magnitude_image_or_segmentation, # Ref will be normalized into [0,1]
       uncertainty = unc_sigma, # calculated uncertainty map

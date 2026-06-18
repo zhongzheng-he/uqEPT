@@ -11,7 +11,7 @@ import time
 import os
 import cc3d
 
-# last modified on 08/09/2025 by Zhongzheng He 
+# last modified on 18/06/2026 by Zhongzheng He 
 
 def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
     """
@@ -128,7 +128,7 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
         Shape_patch = np.abs(Ref_patch - Ref_patch[kx_radii, ky_radii, kz_radii]) <= thresh
         Shape_patch &= Shape 
     
-            # Check if all elements are in shape, i.e., Shape_patch == Shape
+        # Check if all elements are in shape, i.e., Shape_patch == Shape
         if ~np.array_equal(Shape_patch, Shape): 
             labeled = cc3d.connected_components(Shape_patch, connectivity=6)
             center_label = labeled[kx_radii, ky_radii, kz_radii]
@@ -140,7 +140,7 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
 
         # --- find Indices of the 1st-quartile-lowest uncertainties ---
         idx_sorted = np.argsort(uncertainty_patch_in_shape)[:np.maximum(np.int32(len(ind)/4), 1)]
-    
+
         # if there is only one selected voxel 
         if len(idx_sorted) == 1:
             return Im_patch_in_shape[idx_sorted].item()
@@ -164,6 +164,7 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
     Im_min_unc = np.zeros_like(Im)
     Im_min_unc[Indices] = np.ravel(temp_min_unc)
     Im_min_unc = Im_min_unc[kx_radii:-kx_radii, ky_radii:-ky_radii, kz_radii:-kz_radii]
+    Im_min_unc[~np.isfinite(Im_min_unc)]=0
 
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
     return Im_min_unc
@@ -208,3 +209,4 @@ def imrescale(image, new_min=0, new_max=1,ROI=None, window=(0.005, 0.995)): # In
     image_clipped = np.clip(image, old_min, old_max)
 
     return new_min + (image_clipped - old_min) * (new_max - new_min) / (old_max - old_min)
+    

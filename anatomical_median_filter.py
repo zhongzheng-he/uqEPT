@@ -11,7 +11,7 @@ import time
 import os
 import cc3d
 
-# last modified on 03/09/2025
+# last modified on 18/06/2026
 def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
     """
     Applies a 3D anatomically-adaptive median filter.
@@ -140,6 +140,7 @@ def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0
     Im_median = np.zeros_like(Im)
     Im_median[Indices] = np.ravel(temp_median)
     Im_median = Im_median[kx_radii:-kx_radii, ky_radii:-ky_radii, kz_radii:-kz_radii]
+    Im_median[~np.isfinite(Im_median)]=0
 
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
     return Im_median

@@ -12,7 +12,7 @@ import os
 import cc3d
 from numba import njit
 
-# last modified on 03/09/2025
+# last modified on 18/06/2026
 
 def B1_based_EPT_With_Uncertainty_Quantification(B, Ref, kernel_size=[5,5,5], shape="cube", thresh=0.1, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
     """
@@ -212,11 +212,16 @@ def B1_based_EPT_With_Uncertainty_Quantification(B, Ref, kernel_size=[5,5,5], sh
     crop_slice = (slice(kx_radii, -kx_radii), slice(ky_radii, -ky_radii), slice(kz_radii, -kz_radii))
     sigma, unc_sigma= sigma[crop_slice], unc_sigma[crop_slice]
     epsilon,unc_epsilon = epsilon[crop_slice], unc_epsilon[crop_slice]
+    
+    sigma[~np.isfinite(sigma)] = 0
+    epsilon[~np.isfinite(epsilon)] = 0
 
     unc_sigma=unc_penalization(sigma,unc_sigma,Rmin=0,Rmax=2.5)
     unc_epsilon=unc_penalization(epsilon,unc_epsilon,Rmin=1,Rmax=100)
     unc_epsilon = unc_epsilon * ROI[crop_slice]
-    
+
+    unc_sigma[~np.isfinite(unc_sigma)] = np.inf
+    unc_epsilon[~np.isfinite(unc_epsilon)] = np.inf
 
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
     return sigma, epsilon, unc_sigma, unc_epsilon

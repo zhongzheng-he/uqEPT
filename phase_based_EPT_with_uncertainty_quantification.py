@@ -244,14 +244,46 @@ def unc_penalization(mean, unc, Rmin=0, Rmax=2.5, k=1.0):
     return corrected_unc
 
 
-def imrescale(image, new_min=0, new_max=1,ROI=None): 
-    # Intensity normalization to [0,1]
+def imrescale(image, new_min=0, new_max=1,ROI=None, window=(0.005, 0.995)): # Intensity normalization to [0,1]
+    """
+    Intensity normalization with optional ROI and percentile intensity window.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        Input image.
+    new_min, new_max : float
+        Output intensity range.
+    ROI : np.ndarray or None
+        Optional mask. If provided, percentiles are estimated inside ROI.
+    window : tuple(float, float)
+        Quantile window, e.g. (0.005, 0.995) for 0.5%–99.5%.
+
+    Returns
+    -------
+    np.ndarray
+        Rescaled image.
+    """
+        
+    image = np.asarray(image, dtype=np.float64)
+
     if ROI is not None:
-        ROI= ROI>0;
-        old_min, old_max = np.min(image[ROI]), np.max(image[ROI])
+        ROI = ROI > 0
+        vals = image[ROI]
     else:
-        old_min, old_max = np.min(image.ravel()), np.max(image.ravel())
-    return new_min + (image - old_min) * (new_max - new_min) / (old_max - old_min)
+        vals = image.ravel()
+
+    if vals.size == 0:
+        raise ValueError("ROI is empty.")
+
+    old_min, old_max = np.quantile(vals, window)
+
+    if old_max == old_min:
+        return np.full_like(image, new_min, dtype=np.float64)
+
+    image_clipped = np.clip(image, old_min, old_max)
+
+    return new_min + (image_clipped - old_min) * (new_max - new_min) / (old_max - old_min)
     
     
 @njit(cache=True)

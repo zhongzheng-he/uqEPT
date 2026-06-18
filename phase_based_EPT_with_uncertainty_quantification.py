@@ -197,8 +197,10 @@ def Phase_based_EPT_With_Uncertainty_Quantification(PhiTR, Ref, kernel_size=[5,5
 
     crop_slice = (slice(kx_radii, -kx_radii), slice(ky_radii, -ky_radii), slice(kz_radii, -kz_radii))
     sigma, unc_sigma = sigma[crop_slice], unc_sigma[crop_slice]
-
+    
+    sigma[~np.isfinite(sigma)] = 0
     unc_sigma=unc_penalization(sigma,unc_sigma,Rmin=0,Rmax=2.5)
+    unc_sigma[~np.isfinite(unc_sigma)] = np.inf
 
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
     return sigma, unc_sigma

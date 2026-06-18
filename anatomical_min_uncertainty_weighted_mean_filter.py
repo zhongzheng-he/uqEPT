@@ -150,7 +150,7 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
             w = 1 / (uncertainty_selected**2)
             denominator = np.sum(w)
         
-        if ~np.isfinite(denominator) or (denominator < 1e-9):
+        if ~np.isfinite(denominator) or (denominator < 1e-12):
             return np.nanmedian(Im_patch_in_shape[idx_sorted])
         else:
             return np.sum(Im_patch_in_shape[idx_sorted] * w) / denominator

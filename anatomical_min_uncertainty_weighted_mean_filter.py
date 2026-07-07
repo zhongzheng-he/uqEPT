@@ -129,7 +129,7 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
         Shape_patch &= Shape 
     
         # Check if all elements are in shape, i.e., Shape_patch == Shape
-        if ~np.array_equal(Shape_patch, Shape): 
+        if not np.array_equal(Shape_patch, Shape): 
             labeled = cc3d.connected_components(Shape_patch, connectivity=6)
             center_label = labeled[kx_radii, ky_radii, kz_radii]
             Shape_patch = (labeled == center_label)
@@ -150,7 +150,7 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
             w = 1 / (uncertainty_selected**2)
             denominator = np.sum(w)
         
-        if ~np.isfinite(denominator) or (denominator < 1e-12):
+        if (not np.isfinite(denominator)) or (denominator < 1e-12):
             return np.nanmedian(Im_patch_in_shape[idx_sorted])
         else:
             return np.sum(Im_patch_in_shape[idx_sorted] * w) / denominator

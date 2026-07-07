@@ -121,7 +121,7 @@ def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0
         Shape_patch &= Shape
     
             # Check if all elements are in shape, i.e., Shape_patch == Shape
-        if ~np.array_equal(Shape_patch, Shape): 
+        if not np.array_equal(Shape_patch, Shape): 
             labeled = cc3d.connected_components(Shape_patch, connectivity=6)
             center_label = labeled[kx_radii, ky_radii, kz_radii]
             Shape_patch = (labeled == center_label)

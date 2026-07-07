@@ -11,7 +11,7 @@ import time
 import os
 import cc3d
 
-# last modified on 18/06/2026
+# last modified on 07/07/2026
 def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
     """
     Applies a 3D anatomically-adaptive median filter.

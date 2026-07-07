@@ -11,7 +11,7 @@ import time
 import os
 import cc3d
 
-# last modified on 18/06/2026 by Zhongzheng He 
+# last modified on 07/07/2026 by Zhongzheng He 
 
 def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
     """
@@ -26,9 +26,9 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
     of voxels that have the lowest uncertainty. It then calculates a weighted
     average of the values from *only this subset* of most reliable voxels. The
     weights are inversely proportional to the square of the uncertainty
-    (1/uncertainty²), giving a strong preference to the most confident
-    measurements. This dual approach of anatomical guidance and reliability-based
-    selection makes the filter highly effective at reducing noise while preserving
+    (1/uncertainty²),i.e., inverse of variance, giving a strong preference to the most confident
+    measurements, the minimum variance estimation. This dual approach of anatomical guidance (local homogeneity assumption)
+    and reliability-based selection makes the filter highly effective at reducing noise while preserving
     fine details.
 
     Parameters

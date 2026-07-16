@@ -85,7 +85,7 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
     
     # Input verification
     if np.iscomplexobj(PhiTR):
-    raise ValueError("PhiTR must be real-valued for the phase-only version.")
+        raise ValueError("PhiTR must be real-valued for the phase-only version.")
 
     cpu_cores = os.cpu_count()
     if n_jobs==-1:
@@ -110,7 +110,7 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
     PhiTR  = np.pad(PhiTR, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
     ROI = Ref > 0 if ROI is None else np.pad(ROI, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
 
-    if ROI.shape != B.shape:
+    if ROI.shape != PhiTR.shape:
         raise ValueError("ROI must have the same shape as B.")
     if not np.any(ROI):
         raise ValueError("ROI is empty.")

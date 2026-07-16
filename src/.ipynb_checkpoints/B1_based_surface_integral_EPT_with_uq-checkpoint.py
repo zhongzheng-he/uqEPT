@@ -14,7 +14,7 @@ import cc3d
 from numba import njit
 
 def B1_based_surface_integral_EPT_with_uq(B,Ref,fit_kernel_size=[11,11, 11],int_kernel_size=[15, 15, 15],fit_shape = "cube",int_shape = "cube",
-    thresh = 0.05,omega: float = 128e6 * 2 * np.pi, h = None,ROI = None,n_jobs= -1,return_intermediates = False) :
+    thresh = 0.1,omega: float = 128e6 * 2 * np.pi, h = None,ROI = None,n_jobs= -1,return_intermediates = False) :
     """
     Complex B-based surface-integral EPT with uncertainty quantification.
     Accelerated version using numba.njit for repeated numerical patch kernels.

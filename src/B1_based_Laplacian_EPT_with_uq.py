@@ -89,10 +89,10 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
 
     """
     start_time = time.time()
-
+    #input verification
     if not isinstance(B, np.ndarray) or not np.iscomplexobj(B):
         raise ValueError("B must be a complex numpy array.")
-
+    # constants
     mu0       =  4*np.pi*1E-7
     eps0      =  8.854E-12
     j_mu0_omega = 1j*mu0*omega
@@ -117,6 +117,11 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
     Ref = np.pad(Ref, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
     B  = np.pad(B, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
     ROI = Ref > 0 if ROI is None else np.pad(ROI, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
+    
+    if ROI.shape != B.shape:
+        raise ValueError("ROI must have the same shape as B.")
+    if not np.any(ROI):
+        raise ValueError("ROI is empty.")
 
     #normalisation of reference image
     if np.max(np.ravel(Ref)) > 1 :
@@ -126,7 +131,8 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
     x = x - kx_radii 
     y = y - ky_radii 
     z = z - kz_radii 
-
+    
+    #make kernel shape
     if shape == "cube":
         Shape = np.ones((kx, ky, kz), dtype=bool)
     elif shape == "cross":
@@ -138,6 +144,13 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
         Shape = (x / kx_radii) ** 2 + (y / ky_radii) ** 2 + (z /kz_radii) ** 2 <= 1
     else:
         raise ValueError('Please specify shape = "ellipse"/"cube"/"cross"')
+
+    n_shape_fit = np.count_nonzero(Shape)   
+    if n_shape_fit <= 10:
+        raise ValueError(
+            "Uncertainty quantification requires more than 10 voxels in the "
+            "second-order fitting kernel because dof = n_voxels - 10 must be > 0. "
+            "Increase kernel_size or use shape='cube'.")
 
     # considering the voxel spacings
     x=(x*dx).flatten()
@@ -172,12 +185,17 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
         # Ensure Shape_patch has the same dimensions as Shape
         Shape_patch  = (np.abs(Ref_patch - Ref_patch[kx_radii, ky_radii, kz_radii]) <= thresh)
         Shape_patch &= Shape
+
+        # Avoid fitting with padded/background voxels.
+        ROI_patch = ROI[indx, indy, indz]
+        Shape_patch &= ROI_patch
     
         # Check if all elements are in shape, i.e., Shape_patch == Shape
         if np.array_equal(Shape_patch, Shape): 
             B_patch_in_shape = B_patch.flatten()[ind0]
             C = F0_pinv @ B_patch_in_shape # coefficients matrix 
-            F_adap=F0   
+            # F_adap=F0   
+            return calculate_EPs_and_uncertainties(F0, C, B_patch_in_shape,j_mu0_omega, omega_eps0, J_c, J_biv)
         else:
             # removing the non-connected components, cc3d is compiled with C++  
             labeled = cc3d.connected_components(Shape_patch, connectivity=6)
@@ -187,9 +205,7 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
             B_patch_in_shape = B_patch.flatten()[ind] #vector
             F_adap = F[ind, :]
             C = pinv(F_adap) @ B_patch_in_shape# coefficients matrix
-            
-
-        return calculate_EPs_and_uncertainties(F_adap, C, B_patch_in_shape,j_mu0_omega, omega_eps0, J_c, J_biv)
+            return calculate_EPs_and_uncertainties(F_adap, C, B_patch_in_shape,j_mu0_omega, omega_eps0, J_c, J_biv)
             
     print("Processing...")
     results = Parallel(n_jobs=n_jobs)(
@@ -197,7 +213,6 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
         for j in tqdm(range(len(Indx)), desc="Processing Patches", ncols=100, position=0, leave=True))
 
     temp_sigma, temp_epsilon, temp_unc_sigma, temp_unc_epsilon = zip(*results)
-
 
     sigma = np.zeros_like(B,dtype=float)
     sigma[Indices] = temp_sigma
@@ -225,7 +240,64 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
 
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
     return sigma, epsilon, unc_sigma, unc_epsilon
+
+@njit(cache=True)
+def calculate_EPs_and_uncertainties(F_adap, C, B_patch_in_shape,j_mu0_omega, omega_eps0, J_c, J_biv):
+
+    Lap_B = 2 * (C[2] + C[5] + C[9])# Laplacian of B
+    B1 = C[0]  # complex
+    denom = j_mu0_omega * B1
+
+    kappa = Lap_B / denom
+    sigma = np.real(kappa)
+    epsilon = np.imag(kappa) / omega_eps0
+
+
+    n, rank = F_adap.shape
+    dof =n-rank
     
+    if dof <= 0:
+        return sigma,epsilon, np.inf, np.inf
+    else: 
+        # --- Residual calculation ---
+        B_patch_in_shape_fitted = F_adap.astype(np.complex128) @ C
+        residual = B_patch_in_shape - B_patch_in_shape_fitted
+        residual_real = np.real(residual)
+        residual_imag = np.imag(residual)
+        
+        # --- Covariance matrix 
+        residual_cov = np.array([
+            [np.sum(residual_real**2), np.sum(residual_real * residual_imag)],
+            [np.sum(residual_real * residual_imag), np.sum(residual_imag**2)]
+        ], dtype=np.float64)  
+        
+        residual_cov /= dof
+        
+        M = pinv(F_adap.T @ F_adap)
+        cov_C_bivariate = np.kron(residual_cov, M)  
+        dkappa_dLaplacian = 2 / denom
+        
+        # Construct the bivariate Jacobian matrix (2 x 20) of kappa = Laplacian_B / (j mu0 omega B)
+        # with respect to the real and imaginary parts of the complex coefficients C.
+        # Bivariate Jacobian: rows = [Re(kappa), Im(kappa)]; columns = [Re(C0..C9), Im(C0..C9)]     
+        
+        J_c[0] = -Lap_B / (j_mu0_omega * (B1**2)) # dkappa_dB1 
+        J_c[2] = dkappa_dLaplacian
+        J_c[5] = dkappa_dLaplacian
+        J_c[9] = dkappa_dLaplacian
+     
+        J_biv[0, :10] = J_c.real   # dRe(kappa)/dRe(C_i)
+        J_biv[0, 10:] = -J_c.imag  # dRe(kappa)/dIm(C_i)
+        J_biv[1, :10] = J_c.imag   # dIm(kappa)/dRe(C_i)
+        J_biv[1, 10:] = J_c.real   # dIm(kappa)/dIm(C_i)
+        
+        # --- Uncertainty ---
+        cov_kappa = J_biv @ cov_C_bivariate @ J_biv.T 
+        unc_sigma = np.sqrt(np.abs(cov_kappa[0,0])) #real
+        unc_epsilon = np.sqrt(np.abs(cov_kappa[1, 1]))/omega_eps0 #imaginairy
+        return sigma,epsilon,unc_sigma, unc_epsilon
+
+
 def unc_penalization(mean, unc, Rmin=0, Rmax=2.5, k=1.0):
     """
     Corrects the uncertainty for non-biophysical results based on a coverage interval.
@@ -307,64 +379,6 @@ def imrescale(image, new_min=0, new_max=1,ROI=None, window=(0.005, 0.995)): # In
     image_clipped = np.clip(image, old_min, old_max)
 
     return new_min + (image_clipped - old_min) * (new_max - new_min) / (old_max - old_min)
-
-
-
-@njit(cache=True)
-def calculate_EPs_and_uncertainties(F_adap, C, B_patch_in_shape,j_mu0_omega, omega_eps0, J_c, J_biv):
-
-    Lap_B = 2 * (C[2] + C[5] + C[9])# Laplacian of B
-    B1 = C[0]  # complex
-    denom = j_mu0_omega * B1
-
-    kappa = Lap_B / denom
-    sigma = np.real(kappa)
-    epsilon = np.imag(kappa) / omega_eps0
-
-
-    n, rank = F_adap.shape
-    dof =n-rank
-    
-    if dof <= 0:
-        return sigma,epsilon, np.inf, np.inf
-    else: 
-        # --- Residual calculation ---
-        B_patch_in_shape_fitted = F_adap.astype(np.complex128) @ C
-        residual = B_patch_in_shape - B_patch_in_shape_fitted
-        residual_real = np.real(residual)
-        residual_imag = np.imag(residual)
-        
-        # --- Covariance matrix 
-        residual_cov = np.array([
-            [np.sum(residual_real**2), np.sum(residual_real * residual_imag)],
-            [np.sum(residual_real * residual_imag), np.sum(residual_imag**2)]
-        ], dtype=np.float64)  
-        
-        residual_cov /= dof
-        
-        M = pinv(F_adap.T @ F_adap)
-        cov_C_bivariate = np.kron(residual_cov, M)  
-        dkappa_dLaplacian = 2 / denom
-        
-        # Construct the bivariate Jacobian matrix (2 x 20) of kappa = Laplacian_B / (j mu0 omega B)
-        # with respect to the real and imaginary parts of the complex coefficients C.
-        # Bivariate Jacobian: rows = [Re(kappa), Im(kappa)]; columns = [Re(C0..C9), Im(C0..C9)]     
-        
-        J_c[0] = -Lap_B / (j_mu0_omega * (B1**2)) # dkappa_dB1 
-        J_c[2] = dkappa_dLaplacian
-        J_c[5] = dkappa_dLaplacian
-        J_c[9] = dkappa_dLaplacian
-     
-        J_biv[0, :10] = J_c.real   # dRe(kappa)/dRe(C_i)
-        J_biv[0, 10:] = -J_c.imag  # dRe(kappa)/dIm(C_i)
-        J_biv[1, :10] = J_c.imag   # dIm(kappa)/dRe(C_i)
-        J_biv[1, 10:] = J_c.real   # dIm(kappa)/dIm(C_i)
-        
-        # --- Uncertainty ---
-        cov_kappa = J_biv @ cov_C_bivariate @ J_biv.T 
-        unc_sigma = np.sqrt(np.abs(cov_kappa[0,0])) #real
-        unc_epsilon = np.sqrt(np.abs(cov_kappa[1, 1]))/omega_eps0 #imaginairy
-        return sigma,epsilon,unc_sigma, unc_epsilon
 
 
 

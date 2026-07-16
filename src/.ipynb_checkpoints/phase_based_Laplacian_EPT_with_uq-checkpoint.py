@@ -82,8 +82,10 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
 
     """
     start_time = time.time()
-    mu0       =  4*np.pi*1E-7
-    coeff = 2*mu0*omega
+    
+    # Input verification
+    if np.iscomplexobj(PhiTR):
+    raise ValueError("PhiTR must be real-valued for the phase-only version.")
 
     cpu_cores = os.cpu_count()
     if n_jobs==-1:
@@ -91,9 +93,12 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
         print(f"Number of CPU cores available and used: {cpu_cores}")
     else:
         print(f"Number of CPU cores available and used: {n_jobs}")
-        
-    # Initial setup
+
+    # Constants
+    mu0       =  4*np.pi*1E-7
+    coeff = 2*mu0*omega
     dx, dy, dz = h if h is not None else (1e-3, 1e-3, 1e-3)
+
     kx, ky, kz = kernel_size
     if (kx%2 ==0) | (ky%2 ==0) | (kz%2 ==0):
         raise ValueError('the kernel size [kx,ky,kz] should be odd')
@@ -105,16 +110,20 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
     PhiTR  = np.pad(PhiTR, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
     ROI = Ref > 0 if ROI is None else np.pad(ROI, ((kx_radii, kx_radii), (ky_radii, ky_radii), (kz_radii, kz_radii)), mode='constant')
 
+    if ROI.shape != B.shape:
+        raise ValueError("ROI must have the same shape as B.")
+    if not np.any(ROI):
+        raise ValueError("ROI is empty.")
+        
     #normalisation of reference image
     if np.max(np.ravel(Ref)) > 1 :
         Ref= imrescale(Ref,ROI=ROI)
-        
-   
+  
     x, y, z = np.meshgrid(np.arange(kx), np.arange(ky), np.arange(kz), indexing='ij')
     x = x - kx_radii 
     y = y - ky_radii 
     z = z - kz_radii 
-
+    #make kernel shape
     if shape == "cube":
         Shape = np.ones((kx, ky, kz), dtype=bool)
     elif shape == "cross":
@@ -126,6 +135,13 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
         Shape = (x / kx_radii) ** 2 + (y / ky_radii) ** 2 + (z /kz_radii) ** 2 <= 1
     else:
         raise ValueError('Please specify shape = "ellipse"/"cube"/"cross"')
+
+    n_shape_fit = np.count_nonzero(Shape)   
+    if n_shape_fit <= 10:
+        raise ValueError(
+            "Uncertainty quantification requires more than 10 voxels in the "
+            "second-order fitting kernel because dof = n_voxels - 10 must be > 0. "
+            "Increase kernel_size or use shape='cube'.")
 
     # considering the voxel spacings
     x=(x*dx).flatten()
@@ -161,12 +177,17 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
         # Ensure Shape_patch has the same dimensions as Shape
         Shape_patch = (np.abs(Ref_patch - Ref_patch[kx_radii, ky_radii, kz_radii]) <= thresh)
         Shape_patch &= Shape
+
+        # Avoid fitting with padded/background voxels.
+        ROI_patch = ROI[indx, indy, indz]
+        Shape_patch &= ROI_patch
     
         # Check if all elements are in shape, i.e., Shape_patch == Shape
         if np.array_equal(Shape_patch, Shape): 
             PhiTR_patch_in_shape = PhiTR_patch.flatten()[ind0]
             C = F0_pinv @ PhiTR_patch_in_shape # coefficients matrix 
-            F_adap=F0   
+            # F_adap=F0   
+            return  calculate_conductivity_and_uncertainty(F0, C, PhiTR_patch_in_shape, J,coeff)
  
         else:
             # removing the non-connected components, cc3d is compiled with C++  
@@ -176,11 +197,9 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
         
             ind = np.where(Shape_patch.flatten())[0]
             PhiTR_patch_in_shape = PhiTR_patch.flatten()[ind] #vector
-            F_adap = F[ind, :]
-           
+            F_adap = F[ind, :]  
             C= pinv(F_adap) @ PhiTR_patch_in_shape     
-   
-        return  calculate_conductivity_and_uncertainty(F_adap, C, PhiTR_patch_in_shape, J,coeff)
+            return  calculate_conductivity_and_uncertainty(F_adap, C, PhiTR_patch_in_shape, J,coeff)
     
 
     print("Processing...")
@@ -205,7 +224,26 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
     return sigma, unc_sigma
 
+    
+@njit(cache=True)
+def calculate_conductivity_and_uncertainty(F_adap, C, PhiTR_patch_in_shape, J,coeff):
+    Lap_PhiTR = 2 * (C[2] + C[5] + C[9]) 
+    sigma = Lap_PhiTR/coeff
+    
+    n, rank = F_adap.shape 
+    dof = n - rank
+    if dof <= 0:
+        return sigma, np.inf
 
+    residuals = PhiTR_patch_in_shape - (F_adap @ C)
+    var_residual = np.sum(residuals**2) / dof
+
+    M= pinv(F_adap.T @ F_adap)
+    # Propagate uncertainty as before
+    cov_C = var_residual * M
+    var_sigma = J @ cov_C @ J.T
+    return sigma, np.sqrt(var_sigma)
+    
 def unc_penalization(mean, unc, Rmin=0, Rmax=2.5, k=1.0):
     """
     Corrects the uncertainty for non-biophysical results based on a coverage interval.
@@ -227,7 +265,7 @@ def unc_penalization(mean, unc, Rmin=0, Rmax=2.5, k=1.0):
     """
     # Create a copy to avoid modifying the original array in place
     corrected_unc = unc.copy()
-
+    
     # --- Case 1: Value is TOO HIGH ---
     # Condition: The lower bound of the confidence interval is above the max plausible value.
     idx_high = (mean - k * corrected_unc) > Rmax
@@ -244,6 +282,7 @@ def unc_penalization(mean, unc, Rmin=0, Rmax=2.5, k=1.0):
     corrected_unc[idx_low] = np.abs(Rmin - mean[idx_low]) / k
 
     return corrected_unc
+
 
 
 def imrescale(image, new_min=0, new_max=1,ROI=None, window=(0.005, 0.995)): # Intensity normalization to [0,1]
@@ -286,23 +325,6 @@ def imrescale(image, new_min=0, new_max=1,ROI=None, window=(0.005, 0.995)): # In
     image_clipped = np.clip(image, old_min, old_max)
 
     return new_min + (image_clipped - old_min) * (new_max - new_min) / (old_max - old_min)
-    
-    
-@njit(cache=True)
-def calculate_conductivity_and_uncertainty(F_adap, C, PhiTR_patch_in_shape, J,coeff):
-    Lap_PhiTR = 2 * (C[2] + C[5] + C[9]) 
-    sigma = Lap_PhiTR/coeff
-    
-    n, rank = F_adap.shape 
-    dof = n - rank
-    if dof <= 0:
-        return sigma, np.inf
 
-    residuals = PhiTR_patch_in_shape - (F_adap @ C)
-    var_residual = np.sum(residuals**2) / dof
+    
 
-    M= pinv(F_adap.T @ F_adap)
-    # Propagate uncertainty as before
-    cov_C = var_residual * M
-    var_sigma = J @ cov_C @ J.T
-    return sigma, np.sqrt(var_sigma)

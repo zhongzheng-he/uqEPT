@@ -2,11 +2,12 @@
   <img src="assets/uqept-logo.svg" alt="uqEPT" width="340">
 </p>
 
-<h3 align="center">
+<p align="center">
   <strong>u</strong>ncertainty <strong>q</strong>uantification in Helmholtz-Based
   <strong>E</strong>lectrical <strong>P</strong>roperties <strong>T</strong>omography
+  <br>
   with Uncertainty-Guided Post-Processing
-</h3>
+</p>
 
 # uqEPT
 `uqEPT` is a research-oriented Python toolkit for **uncertainty quantification

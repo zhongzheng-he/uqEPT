@@ -3,8 +3,7 @@
 </p>
 
 <p align="center">
-  Uncertainty quantification for Helmholtz-based electrical properties tomography<br>
-  under the local homogeneity assumption (LHA)
+ uqEPT: Uncertainty Quantification in Helmholtz-Based Electrical Properties Tomography with Uncertainty-Guided Post-Processing
 </p>
 
 # uqEPT

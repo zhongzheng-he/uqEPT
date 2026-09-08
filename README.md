@@ -80,17 +80,17 @@ shapes.
 | Input | Meaning | Convention |
 |---|---|---|
 | `PhiTR` | Transceive phase | Real-valued array in radians |
-| `B` | Complex transmit-field surrogate | Complex-valued array |
+| `B` | Complex B field | Complex-valued array |
 | `Ref` | Anatomical guidance image or segmentation | Normalized internally when values exceed 1 |
-| `ROI` | Reconstruction mask | Boolean array; defaults to `Ref > 0` |
-| `h` | Voxel spacing | `[dx, dy, dz]` in metres |
-| `omega` | Larmor angular frequency | Radians per second |
+| `ROI` | mask | Boolean array; defaults to `Ref > 0` |
+| `h` | Voxel spacing | `[dx, dy, dz]` in metres, defaults to`[1e-3,1e-3,1e-3]` |
+| `omega` | Larmor angular frequency | defaults to `128e6*2*np.pi`|
 
 For standard complex Helmholtz-based EPT, a commonly used input is constructed
 as
 
 ```python
-B = np.abs(B1_plus) * np.exp(1j * PhiTR / 2.0)
+B = np.abs(B1_plus) * np.exp(1j * PhiTR / 2)
 ```
 
 where `PhiTR` is expressed in radians. For image-based EPT, `B` may instead be
@@ -283,27 +283,6 @@ Kernel sizes should be reported together with voxel spacing. They should be
 validated for the SNR, anatomy, EPT formulation, and target structure rather
 than treated as universal defaults.
 
-## Interpretation of uncertainty
-
-The returned uncertainty maps are propagated standard uncertainties under the
-implemented local residual and covariance model. They should not be interpreted
-as ground-truth reconstruction errors.
-
-In particular:
-
-- uncertainty can reflect measurement noise, fitting residuals, and numerical
-  instability;
-- smooth systematic bias may not produce large residuals and can therefore be
-  underestimated;
-- the code applies a biophysical-range penalty to implausible reconstructed
-  values;
-- in SI-EPT, within-fit covariance is propagated, whereas cross-covariance
-  between neighboring overlapping polynomial fits is currently neglected; and
-- quantitative calibration requires validation with repeated noise realizations
-  or repeated measurements, normalized errors, and interval coverage.
-
-Strong uncertainty-error correlation supports relative spatial reliability
-ranking, but does not by itself establish calibration of uncertainty magnitude.
 
 ## Example notebook
 

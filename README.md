@@ -2,10 +2,11 @@
   <img src="assets/uqept-logo.svg" alt="uqEPT" width="340">
 </p>
 
-<p align="center">
-**u**ncertainty **q**uantification in Helmholtz-Based **E**lectrical **P**roperties **T**omography with Uncertainty-Guided Post-Processing
-</p>
-
+<h3 align="center">
+  <strong>u</strong>ncertainty <strong>q</strong>uantification in Helmholtz-Based
+  <strong>E</strong>lectrical <strong>P</strong>roperties <strong>T</strong>omography
+  with Uncertainty-Guided Post-Processing
+</h3>
 # uqEPT
 `uqEPT` is a research-oriented Python toolkit for **uncertainty quantification
 in Helmholtz-based electrical properties tomography (EPT)**. It supports

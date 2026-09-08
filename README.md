@@ -2,11 +2,7 @@
   <img src="assets/uqept-logo.svg" alt="uqEPT" width="340">
 </p>
 
-<p align="center">
- uqEPT: Uncertainty Quantification in Helmholtz-Based Electrical Properties Tomography with Uncertainty-Guided Post-Processing
-</p>
-
-# uqEPT
+# uqEPT: Uncertainty Quantification in Helmholtz-Based Electrical Properties Tomography with Uncertainty-Guided Post-Processing
 
 `uqEPT` is a research-oriented Python toolkit for **uncertainty quantification
 in Helmholtz-based electrical properties tomography (EPT)**. It supports
@@ -32,18 +28,14 @@ The current implementation supports:
 - anatomical median filtering; and
 - anatomical minimum-uncertainty weighted-mean filtering.
 
-> **Research software:** this repository is under active development. The API
-> and default parameters may change. Please validate parameters and outputs for
-> your acquisition and application before quantitative interpretation.
+> **Research software:** this repository is under active development....
 
 ## Model scope
 
 Both the Laplacian and surface-integral formulations rely on the LHA: electrical
 properties are assumed to be approximately constant over the effective local
-reconstruction support. Surface integration changes how the Helmholtz-based
-estimator is evaluated; it does **not** remove the LHA. Anatomical guidance helps
-restrict the support to similar tissue regions, but does not guarantee that the
-assumption holds at tissue boundaries or within heterogeneous regions.
+reconstruction support. Anatomical guidance helps restrict the support to similar tissue regions, 
+but does not guarantee that the assumption holds at tissue boundaries or within heterogeneous regions.
 
 ## Reference
 
@@ -352,12 +344,14 @@ uqEPT/
 └── README.md
 ```
 
-## License
-
-See [`LICENSE`](LICENSE).
-
 ## Contact
 
 Zhongzheng He, PhD<br>
 ICube, Université de Strasbourg, Strasbourg, France<br>
 zhongzheng.he@unistra.fr
+
+## License
+
+See [`LICENSE`](LICENSE).
+
+

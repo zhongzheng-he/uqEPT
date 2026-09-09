@@ -284,7 +284,7 @@ sigma_f_min_unc = anatomical_min_uncertainty_weighted_mean_filter(
   are more sensitive to noise.
 - Adjust `thresh` if using the magnitude image (e.g., MPRAGE); it controls which
   neighboring voxels are considered similar to the center voxel. The function default is 0.05.
-- Start with `n_jobs=1`. Increase it if memory allows; `n_jobs=-1` uses all
+- Start with `n_jobs=4`. Increase it if memory allows; `n_jobs=-1` uses all
   available CPU cores. The first run also includes Numba compilation time.
 
 

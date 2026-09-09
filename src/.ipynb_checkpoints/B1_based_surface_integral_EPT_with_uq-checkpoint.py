@@ -13,11 +13,10 @@ import cc3d
 # from scipy.signal import convolve as convn
 from numba import njit
 
-def B1_based_surface_integral_EPT_with_uq(B,Ref,fit_kernel_size=[11,11, 11],int_kernel_size=[15, 15, 15],fit_shape = "cube",int_shape = "cube",
-    thresh = 0.1,omega: float = 128e6 * 2 * np.pi, h = None,ROI = None,n_jobs= -1,return_intermediates = False) :
+def B1_based_surface_integral_EPT_with_uq(B,Ref,fit_kernel_size=[11,11, 11],int_kernel_size=[11, 11, 11],fit_shape = "cube",int_shape = "cube",
+    thresh = 0.05,omega: float = 128e6 * 2 * np.pi, h = None,ROI = None,n_jobs= -1,return_intermediates = False) :
     """
     Complex B-based surface-integral EPT with uncertainty quantification.
-    Accelerated version using numba.njit for repeated numerical patch kernels.
     Volume-denominator formulation only:
     
         kappa_SI = S_B / (j * mu0 * omega * V_B)
@@ -30,6 +29,61 @@ def B1_based_surface_integral_EPT_with_uq(B,Ref,fit_kernel_size=[11,11, 11],int_
     For each voxel p, q = [c0, c1, c3, c6] is obtained from a local second-order
     polynomial fit. The within-voxel bivariate covariance of q is retained.
     Cross-covariances between different voxel-wise fits are neglected.
+
+
+    Parameters
+    ----------
+    B : numpy.ndarray
+        3D complex-valued array. This can be the transmit B1+ field or the
+        square root of a complex image from UTE/ZTE sequences.
+    Ref : numpy.ndarray
+        3D reference image for anatomical guidance, such as a magnitude image
+        or a tissue segmentation map.
+    fit_kernel_size : list of int, optional
+        Dimensions [kx, ky, kz] of the 2nd order polynomial fitting kernel. All
+        values must be odd. Default is [11, 11, 11].
+    int_kernel_size : list of int, optional
+        Dimensions [kx, ky, kz] of the surface integral kernel. All
+        values must be odd. Default is [11, 11, 11].
+    fit_shape : {'cube', 'ellipse', 'cross'}, optional
+        The base shape of the 2nd order polynomial fitting kernel before anatomical adaptation.
+        Default is 'cube'.
+    int_shape : {'cube', 'ellipse', 'cross'}, optional
+        The base shape of the surface integral kernel before anatomical adaptation.
+        Default is 'cube'.    
+    thresh : float, optional
+        Threshold for anatomical adaptation (0 to 1). Only voxels in the
+        `Ref` image with a relative intensity difference below this threshold
+        (compared to the kernel's central voxel) are included in the fit.
+        Default is 0.05.
+    omega : float, optional
+        Larmor frequency in rad/s (i.e., 2 * pi * frequency).
+        Default is 128e6 * 2 * np.pi, corresponding to a 3T scanner.
+    h : list of float, optional
+        Voxel spacing [dx, dy, dz] in meters. If None, assumes an isotropic
+        voxel size of 1 mm. Default is None.
+    ROI : numpy.ndarray, optional
+        3D binary mask defining the ROI. If None, the ROI is
+        automatically generated from non-zero voxels in the `Ref` image.
+        Default is None.
+    n_jobs : int, optional
+        Number of CPU cores to use for parallel processing.
+        -1 means using all available cores. Default is -1.
+
+    Returns
+    -------
+    sigma : numpy.ndarray
+        The reconstructed 3D electrical conductivity map in Siemens/meter (S/m).
+    epsilon : numpy.ndarray
+        The reconstructed 3D relative permittivity map (unitless).
+    unc_sigma : numpy.ndarray
+        A 3D map of the standard deviation for the conductivity, quantifying
+        the voxel-wise uncertainty.
+    unc_epsilon : numpy.ndarray
+        A 3D map of the standard deviation for the relative permittivity,
+        quantifying the voxel-wise uncertainty.
+
+    """
     """
 
     start_time = time.time()

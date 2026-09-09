@@ -2,8 +2,6 @@
 # // Zhongzheng He, PhD, ICube, Université de Strasbourg, Strasbourg, France
 # // Contact: zhongzheng.he@unistra.fr
 # ///////////////////////////////////////////////////////////////////////////////////////////////
-
-
 import numpy as np
 from numpy.linalg import pinv
 from joblib import Parallel, delayed
@@ -14,8 +12,7 @@ import cc3d
 from scipy.optimize import minimize
 from numba import njit
 
-
-def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cube", thresh=0.1, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
+def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[11,11,11], shape="cube", thresh=0.05, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
     """
     Reconstructs electrical conductivity and its uncertainty using phase-based EPT.
 
@@ -48,8 +45,8 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
         3D reference image for anatomical guidance, such as a magnitude image
         or a tissue segmentation map.
     kernel_size : list of int, optional
-        Dimensions [kx, ky, kz] of the Savitzky-Golay filter kernel. All
-        values must be odd. Default is [5, 5, 5].
+        Dimensions [kx, ky, kz] of the 2nd order polynomial fitting kernel. All
+        values must be odd. Default is [11, 11, 11].
     shape : {'cube', 'ellipse', 'cross'}, optional
         The base shape of the kernel before anatomical adaptation.
         Default is 'cube'.
@@ -57,7 +54,7 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[5,5,5], shape="cu
         Threshold for anatomical adaptation (0 to 1). Only voxels in the
         `Ref` image with a relative intensity difference below this threshold
         (compared to the kernel's central voxel) are included in the fit.
-        Default is 0.1.
+        Default is 0.05.
     omega : float, optional
         Larmor frequency in rad/s (i.e., 2 * pi * frequency).
         Default is 128e6 * 2 * np.pi, corresponding to a 3T scanner.

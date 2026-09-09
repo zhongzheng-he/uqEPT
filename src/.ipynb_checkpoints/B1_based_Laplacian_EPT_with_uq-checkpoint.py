@@ -12,8 +12,8 @@ import os
 import cc3d
 from numba import njit
 
-# last modified on 18/06/2026
-def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", thresh=0.1, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
+# last modified on 09/09/2026
+def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[11,11,11], shape="cube", thresh=0.05, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
     """
     Reconstructs electrical properties with bivariate uncertainty quantification.
 
@@ -37,9 +37,6 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
     complex-valued SG fit to the final real-valued conductivity and
     permittivity maps, yielding robust uncertainty estimates.
 
-    The process is computationally intensive and is therefore parallelized
-    to leverage multi-core processors for efficient execution.
-
     Parameters
     ----------
     B : numpy.ndarray
@@ -49,8 +46,8 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
         3D reference image for anatomical guidance, such as a magnitude image
         or a tissue segmentation map.
     kernel_size : list of int, optional
-        Dimensions [kx, ky, kz] of the Savitzky-Golay filter kernel. All
-        values must be odd. Default is [5, 5, 5].
+        Dimensions [kx, ky, kz] of the 2nd order polynomial fitting kernel. All
+        values must be odd. Default is [11, 11, 11].
     shape : {'cube', 'ellipse', 'cross'}, optional
         The base shape of the kernel before anatomical adaptation.
         Default is 'cube'.
@@ -58,7 +55,7 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
         Threshold for anatomical adaptation (0 to 1). Only voxels in the
         `Ref` image with a relative intensity difference below this threshold
         (compared to the kernel's central voxel) are included in the fit.
-        Default is 0.1.
+        Default is 0.05.
     omega : float, optional
         Larmor frequency in rad/s (i.e., 2 * pi * frequency).
         Default is 128e6 * 2 * np.pi, corresponding to a 3T scanner.
@@ -66,7 +63,7 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", th
         Voxel spacing [dx, dy, dz] in meters. If None, assumes an isotropic
         voxel size of 1 mm. Default is None.
     ROI : numpy.ndarray, optional
-        3D binary mask defining the Region of Interest. If None, the ROI is
+        3D binary mask defining the ROI. If None, the ROI is
         automatically generated from non-zero voxels in the `Ref` image.
         Default is None.
     n_jobs : int, optional

@@ -10,7 +10,7 @@
 </p>
 
 # uqEPT
-`uqEPT` is a research-oriented Python toolkit for **uncertainty quantification
+`uqEPT` is a Python toolkit for **uncertainty quantification
 in Helmholtz-based electrical properties tomography (EPT)**. It supports
 Laplacian and surface-integral formulations under the **local homogeneity
 assumption (LHA)**, combining anatomically adaptive reconstruction with
@@ -20,40 +20,11 @@ voxel-wise uncertainty propagation and uncertainty-guided post-processing.
   <img src="figure.png" alt="Laplacian-based uqEPT workflow: reconstruction, uncertainty propagation, and uncertainty-guided post-processing" width="730">
 </p>
 
-<!-- <p align="center">
-  <em>Illustration of Laplacian-based EPT, uncertainty propagation, and uncertainty-guided post-processing.</em>
-</p> -->
-
 The current implementation supports:
 
-- phase-based EPT for conductivity reconstruction;
-- complex B-field-based EPT for conductivity and relative permittivity;
-- Laplacian and surface-integral (SI) formulations;
-- anatomically adaptive local polynomial fitting;
-- voxel-wise standard-uncertainty maps;
-- anatomical median filtering; and
-- anatomical minimum-uncertainty weighted-mean filtering.
+- Complex B1-field based (HB & IB) and phase-based (PB) EPT with uncertainty quantification in both Laplacian (presented in ISMRM 2026) and surface-integral (new) formulations;
+- Post-processing methods: anatomical median filtering (conventional) and anatomical minimum-uncertainty weighted-mean filtering (proposed).
 
-> **Research software:** this repository is under active development....
-
-## Installation
-
-Clone the development branch and install the required packages:
-
-```bash
-conda create -n uqept -c conda-forge python=3.11 numpy scipy joblib tqdm numba connected-components-3d
-conda activate uqept
-
-git clone --branch test https://github.com/zhongzheng-he/uqEPT.git
-cd uqEPT
-
-# Verify that dependencies and uqEPT functions can be imported
-python -c "import numpy, scipy, joblib, tqdm, numba, cc3d; import src; print('uqEPT imports successful')"
-```
-The repository can then be imported from its root directory:
-```python
-from src import *
-```
 ## Reference
 
 He Z, Lamy J, Arduino A, Zilberti L, Loureiro de Sousa P. Rigorous
@@ -66,264 +37,261 @@ Exhibition*; Cape Town, South Africa; 2026.
 If you use this code, please cite the reference above. A citation for the full
 methodological paper will be added when available.
 
+## Installation
 
-## Input conventions
+Clone and install the required packages using `conda:
 
-All reconstruction inputs are three-dimensional NumPy arrays with identical
-shapes.
+```bash
+conda create -n uqept -c conda-forge python=3.11 numpy scipy joblib tqdm numba connected-components-3d
+conda activate uqept
 
-| Input | Meaning | Convention |
-|---|---|---|
-| `PhiTR` | Transceive phase ($\varphi_{tr=\phi^+ + \phi^-}$)| 3D Real-valued array in radians |
-| `B` | Complex B field ($B_1^+$ or $\sqrt{\S_{UTE}}\propto\sqrt{B_1^+B_1^-}$) | 3D Complex-valued array |
-| `Ref` | Segmentation or anatomical guidance image (MPRAGE, T1w,etc...) | Normalized internally when values exceed 1 |
-| `ROI` | mask | Boolean array; defaults to `Ref > 0` |
-| `h` | Voxel spacing | `[dx, dy, dz]` in metres, defaults to`[1e-3,1e-3,1e-3]` |
-| `omega` | Larmor angular frequency | defaults to `128e6*2*np.pi` at 3T| 
-|'shape', 'fit_shape','int_shape'| Kernel shape : cube, 
+git clone https://github.com/zhongzheng-he/uqEPT.git
+cd uqEPT
 
-For standard complex Helmholtz-based EPT, a commonly used input is constructed
-as
-
-```python
-B = np.abs(B1_plus) * np.exp(1j * PhiTR / 2)
+# Verify that dependencies and uqEPT functions can be imported
+python -c "import numpy, scipy, joblib, tqdm, numba, cc3d; from src import *; print('uqEPT imports successful')"
 ```
+## Complex-valued EPT (HB and IB)
 
-where `PhiTR` is expressed in radians. For image-based EPT, `B` may instead be
-a complex surrogate derived from an appropriate magnitude and phase image.
-Such a surrogate introduces additional signal-model assumptions that must be
-validated for the intended application.
+HB and IB reconstruct **conductivity and relative permittivity** from a complex
+field `B` under the local homogeneity assumption (LHA).
 
-## Quick start: surface-integral EPT
+**HB (standard Helmholtz-based EPT)** combines the measured $|B_1^+|$ map
+with half the transceive phase $\varphi_{\mathrm{tr}}$, using the transceive-phase assumption:
 
-The SI formulation is implemented in two stages:
+$$
+B_{\mathrm{HB}}=|B_1^+|\exp(j\varphi_{\mathrm{tr}}/2).
+$$
 
-1. A local second-order polynomial fit estimates the field value and/or first
-   spatial derivatives, together with their within-fit covariance.
-2. These fitted quantities are aggregated over an integration domain using a
-   volume-denominator surface-integral formulation.
+**IB (image-based EPT)** uses a complex surrogate derived from a low-flip-angle
+UTE/ZTE image:
 
-The fitting kernel and integration kernel therefore have different roles and
-are controlled separately. Their combined effective support remains subject to
-the LHA described above.
+$$
+B_{\mathrm{IB}}=\sqrt{|S_{\mathrm{UTE}}|}\exp(j\varphi_{\mathrm{tr}}/2).
+$$
 
-### Phase-based SI-EPT
+### Laplacian formulation
 
-Phase-based SI-EPT reconstructs conductivity and its propagated standard
-uncertainty:
+The complex admittivity is
 
-```python
-import numpy as np
-from src import phase_based_surface_integral_EPT_with_uq
+$$
+\widehat{\kappa}_{\mathrm{Lap}}
+= \frac{\nabla^2 B}{j\mu_0\omega B},
+\qquad
+\kappa = \sigma + j\omega\varepsilon_0\varepsilon_r.
+$$
 
-sigma, unc_sigma = phase_based_surface_integral_EPT_with_uq(
-    PhiTR=transceive_phase,          # radians, real-valued 3D array
-    Ref=reference_image,            # magnitude image or segmentation
-    fit_kernel_size=[11, 11, 11],  # local polynomial-fitting support
-    int_kernel_size=[15, 15, 15],  # surface-integral support
-    fit_shape="cube",
-    int_shape="cube",
-    thresh=0.05,
-    omega=2 * np.pi * 128e6,
-    h=[1e-3, 1e-3, 1e-3],
-    ROI=brain_mask,
-    n_jobs=-1,
-)
-```
+Conductivity and relative permittivity follow as
 
-Outputs:
+$$
+\widehat{\sigma}=\operatorname{Re}(\widehat{\kappa}),
+\qquad
+\widehat{\varepsilon}_r
+=\frac{\operatorname{Im}(\widehat{\kappa})}{\omega\varepsilon_0}.
+$$
 
-- `sigma`: conductivity in S/m;
-- `unc_sigma`: propagated standard uncertainty of conductivity in S/m.
-
-### Complex B-based SI-EPT
-
-Complex SI-EPT reconstructs conductivity, relative permittivity, and their
-propagated standard uncertainties:
-
-```python
-import numpy as np
-from src import B1_based_surface_integral_EPT_with_uq
-
-B = np.abs(B1_plus) * np.exp(1j * transceive_phase / 2.0)
-
-sigma, epsilon_r, unc_sigma, unc_epsilon_r = (
-    B1_based_surface_integral_EPT_with_uq(
-        B=B,                         # complex-valued 3D field
-        Ref=reference_image,
-        fit_kernel_size=[11, 11, 11],
-        int_kernel_size=[15, 15, 15],
-        fit_shape="cube",
-        int_shape="cube",
-        thresh=0.05,
-        omega=2 * np.pi * 128e6,
-        h=[1e-3, 1e-3, 1e-3],
-        ROI=brain_mask,
-        n_jobs=-1,
-    )
-)
-```
-
-Outputs:
-
-- `sigma`: conductivity in S/m;
-- `epsilon_r`: dimensionless relative permittivity;
-- `unc_sigma`: propagated standard uncertainty of conductivity in S/m;
-- `unc_epsilon_r`: propagated standard uncertainty of relative permittivity.
-
-Set `return_intermediates=True` to return a dictionary containing intermediate
-SI quantities for method development and debugging. The dictionary keys differ
-slightly between the phase-only and complex implementations; see the function
-docstrings for the current contents.
-
-## Laplacian EPT
-
-The Laplacian formulation uses one anatomically adaptive polynomial-fitting
-kernel.
-
-### Phase-based Laplacian EPT
-
-```python
-from src import phase_based_Laplacian_EPT_with_uq
-
-sigma, unc_sigma = phase_based_Laplacian_EPT_with_uq(
-    PhiTR=transceive_phase,
-    Ref=reference_image,
-    kernel_size=[11, 11, 11],
-    shape="cube",
-    thresh=0.05,
-    omega=2 * np.pi * 128e6,
-    h=[1e-3, 1e-3, 1e-3],
-    ROI=brain_mask,
-    n_jobs=-1,
-)
-```
-
-### Complex B-based Laplacian EPT
+Both HB and IB use the same reconstruction function:
 
 ```python
 from src import B1_based_Laplacian_EPT_with_uq
 
-sigma, epsilon_r, unc_sigma, unc_epsilon_r = (
-    B1_based_Laplacian_EPT_with_uq(
-        B=B,
-        Ref=reference_image,
-        kernel_size=[11, 11, 11],
-        shape="cube",
-        thresh=0.05,
-        omega=2 * np.pi * 128e6,
-        h=[1e-3, 1e-3, 1e-3],
-        ROI=brain_mask,
-        n_jobs=-1,
-    )
+sigma, epsilon_r, unc_sigma, unc_epsilon_r = B1_based_Laplacian_EPT_with_uq(
+    B,                      # complex HB or IB field (3D array)
+    kernel_size=[11,11,11], # 2nd order polynomial-fitting kernel size
+    shape="cube",           # fitting-kernel geometry (cube, ellipse, cross)
+    Ref=reference_image,    # anatomical image or segmentation(recommended)
+    ROI=brain_mask,         # ROI mask
+    h=[1e-3,1e-3,1e-3],     # voxel spacing [m]
+    omega=2*np.pi*128e6,    # Larmor angular frequency [rad/s]
+    thresh=0.05,            # anatomical similarity threshold [0,1]
+    n_jobs=-1,              # number of parallel workers, -1 if using all available cores
 )
 ```
 
-## Uncertainty-guided post-processing
+### Surface-integral formulation
 
-The proposed post-processing method first restricts the local neighborhood
-using the anatomical reference. It then retains the 25% of valid neighboring
-voxels with the lowest uncertainty and computes an inverse-variance-weighted
-mean from that subset.
+SI EPT integrates fitted first derivatives over a local boundary. This spatial
+aggregation can reduce noise sensitivity.
+
+For an integration region $\Omega$ with outward unit normal $\mathbf{n}$,
+
+$$
+\widehat{\kappa}_{\mathrm{SI}}
+=\frac{\displaystyle\oint_{\partial\Omega}\nabla B\cdot\mathbf{n}\,dA}
+{\displaystyle j\mu_0\omega\int_\Omega B\,dV}.
+$$
+
+Use the same HB or IB field `B` defined above. Conductivity and relative
+permittivity are extracted from $\widehat{\kappa}_{\mathrm{SI}}$ in the same
+way as for Laplacian EPT.
 
 ```python
-from src import anatomical_min_uncertainty_weighted_mean_filter
+from src import B1_based_surface_integral_EPT_with_uq
 
-sigma_proposed = anatomical_min_uncertainty_weighted_mean_filter(
-    Im=sigma,
-    Ref=reference_image,
-    uncertainty=unc_sigma,           # standard-uncertainty map
-    kernel_size=[21, 21, 21],
-    shape="cube",
-    thresh=0.05,
-    ROI=brain_mask,
-    n_jobs=-1,
+sigma, epsilon_r, unc_sigma, unc_epsilon_r = (
+    B1_based_surface_integral_EPT_with_uq(
+        B,                          # complex HB or IB field (3D array)
+        fit_kernel_size=[11,11,11], # 2nd order polynomial-fitting kernel size
+        int_kernel_size=[11,11,11], # surface integral kernel size
+        fit_shape="cube",           # fitting-kernel shape (cube, ellipse, cross)
+        int_shape="cube",           # surface-integral kernel shape (cube, ellipse, cross)
+        Ref=reference_image,        # anatomical image or segmentation(recommended)
+        ROI=brain_mask,             # ROI mask
+        h=[1e-3,1e-3,1e-3],         # voxel spacing [m]
+        omega=2*np.pi*128e6,        # Larmor angular frequency [rad/s]
+        thresh=0.05,                # anatomical similarity threshold [0,1]
+        n_jobs=-1,                  # number of parallel workers,-1 if using all available cores
+    )
+```
+
+
+
+## Simplified phase-based EPT (PB)
+
+PB estimates **conductivity only** by neglecting $\nabla|B_1^\pm|$ terms, using only the transceive phase.
+### Laplacian formulation
+$$
+\widehat{\sigma}_{\mathrm{PB,Lap}}
+=\frac{\nabla^2\varphi_{\mathrm{tr}}}{2\mu_0\omega}.
+$$
+```python
+from src import phase_based_Laplacian_EPT_with_uq
+
+sigma, unc_sigma = phase_based_Laplacian_EPT_with_uq(
+    PhiTR,                  # unwrapped transceive phase in radians (3D array)
+    kernel_size=[11,11,11], # 2nd order polynomial-fitting kernel size
+    shape="cube",           # fitting-kernel shape (cube, ellipse, cross)
+    Ref=reference_image,    # anatomical image or segmentation(recommended)
+    ROI=brain_mask,         # ROI mask
+    h=[1e-3,1e-3,1e-3],     # voxel spacing [m]
+    omega=2*np.pi*128e6,    # Larmor angular frequency [rad/s]
+    thresh=0.05,            # anatomical similarity threshold [0,1]
+    n_jobs=-1,              # number of parallel workers,-1 if using all available cores
 )
 ```
 
-For comparison, the anatomically adaptive median filter is called as follows:
+### Surface-integral formulation
+
+Similarly, the phase-only SI estimator is
+
+$$
+\widehat{\sigma}_{\mathrm{PB,SI}}
+=\frac{\displaystyle\oint_{\partial\Omega}
+\nabla\varphi_{\mathrm{tr}}\cdot\mathbf{n}\,dA}
+{2\mu_0\omega V_\Omega},
+\qquad V_\Omega=\int_\Omega dV.
+$$
+
+```python
+from src import phase_based_surface_integral_EPT_with_uq
+
+sigma, unc_sigma = phase_based_surface_integral_EPT_with_uq(
+    PhiTR,                      # unwrapped transceive phase in radians (3D array)
+    fit_kernel_size=[11,11,11], # 2nd order polynomial-fitting kernel size
+    int_kernel_size=[11,11,11], # surface integral kernel size
+    fit_shape="cube",           # fitting-kernel shape (cube, ellipse, cross)
+    int_shape="cube",           # surface-integral kernel shape (cube, ellipse, cross)
+    Ref=reference_image,        # anatomical image or segmentation(recommended)
+    ROI=brain_mask,             # ROI mask
+    h=[1e-3,1e-3,1e-3],         # voxel spacing [m]
+    omega=2*np.pi*128e6,        # Larmor angular frequency [rad/s]; use your value
+    thresh=0.05,                # anatomical similarity threshold [0,1]
+    n_jobs=-1,                  # number of parallel workers,-1 if using all available cores
+)
+```
+
+
+**About uncertainty:** both formulations propagate covariance estimated from
+local polynomial-fitting residuals. The implementation then penalizes the
+uncertainties of estimates outside its predefined physical ranges. The
+returned `unc_*` maps include this adjustment and guide post-processing;
+they should not be interpreted as a complete measure of reconstruction error.
+
+## Anatomical post-processing
+
+Both filters use the anatomical reference to select a local neighborhood
+around each voxel. They can be applied to any of the reconstructions above.
+
+### Anatomical median filter
+
+The median filter replaces each estimate with the median of its anatomical
+neighborhood $\mathcal{N}_p$:
+
+$$
+\widehat{x}_{\mathrm{median}}(p)
+=\operatorname{median}_{q\in\mathcal{N}_p}x(q).
+$$
 
 ```python
 from src import anatomical_median_filter
 
-sigma_median = anatomical_median_filter(
-    Im=sigma,
-    Ref=reference_image,
-    kernel_size=[21, 21, 21],
-    shape="cube",
-    thresh=0.05,
-    ROI=brain_mask,
-    n_jobs=-1,
+sigma_f_med = anatomical_median_filter(
+    sigma,                  # input conductivity/permittivity map
+    Ref=reference_image,    # anatomical image or segmentation(recommended)
+    ROI=brain_mask,         # ROI mask
+    kernel_size=[21,21,21], # kernel size
+    shape="cube",           # kernel shape (cube, ellipse, cross)
+    thresh=0.05,            # anatomical similarity threshold [0,1]
+    n_jobs=-1,              # number of parallel workers,-1 if using all available cores
 )
 ```
 
-The same post-processing functions can be applied to relative permittivity by
-using `epsilon_r` and `unc_epsilon_r` as inputs.
+### Proposed uncertainty-guided filter
 
-## Choosing kernels and anatomical thresholds
+The proposed filter selects approximately the lowest-uncertainty quarter of
+the anatomical neighborhood, with at least one voxel retained. It then
+combines those estimates using inverse-variance weights:
 
-- Every kernel dimension must be an odd integer.
-- The second-order polynomial fit requires more than 10 included voxels for a
-  finite residual-based covariance estimate.
-- `fit_kernel_size` controls derivative estimation and the local bias-variance
-  trade-off.
-- `int_kernel_size` controls SI aggregation and its effective spatial support.
-- Larger kernels generally suppress random fluctuations but increase boundary
-  mixing and may reduce the recovery of small structures.
-- Smaller kernels better preserve boundaries and the local-homogeneity
-  assumption, but are more sensitive to noise.
-- `thresh` is applied after internal normalization of `Ref` and should be
-  selected for the contrast and scaling of the reference image.
+$$
+\widehat{x}_{\mathrm{proposed}}(p)
+=\frac{\displaystyle\sum_{q\in\mathcal{Q}_p}x(q)/u(q)^2}
+{\displaystyle\sum_{q\in\mathcal{Q}_p}1/u(q)^2},
+$$
 
-Kernel sizes should be reported together with voxel spacing. They should be
-validated for the SNR, anatomy, EPT formulation, and target structure rather
-than treated as universal defaults.
+where $\mathcal{Q}_p$ is the selected subset and $u(q)$ is the corresponding
+uncertainty. Lower-uncertainty estimates receive greater weight. The code
+falls back to the subset median when the weight sum is non-finite or too small.
 
+```python
+from src import anatomical_min_uncertainty_weighted_mean_filter
 
-## Example notebook
-
-Install the additional notebook and plotting dependencies, then launch Jupyter
-from the repository root:
-
-```bash
-python -m pip install matplotlib jupyterlab
-python -m jupyterlab
+sigma_f_min_unc = anatomical_min_uncertainty_weighted_mean_filter(
+    sigma,                  # input conductivity/permittivity map
+    uncertainty=unc_sigma,  # matching uncertainty map
+    Ref=reference_image,    # anatomical image or segmentation(recommended)
+    ROI=brain_mask,         # ROI mask
+    kernel_size=[21,21,21], # kernel size
+    shape="cube",           # kernel shape (cube, ellipse, cross)
+    thresh=0.05,            # anatomical similarity threshold [0,1]
+    n_jobs=-1,              # number of parallel workers,-1 if using all available cores
+)
 ```
 
-See [`examples/quickstart.ipynb`](examples/quickstart.ipynb) for an end-to-end
-template covering input validation, phase-based and complex SI-EPT,
-uncertainty-guided filtering, visualization, and saving outputs. Replace the
-placeholder `.npy` paths with your own co-registered 3D arrays before running
-the reconstruction cells.
 
-## Notes on runtime and memory
+## Practical tips
 
-Three-dimensional reconstruction can be computationally demanding, especially
-for large fitting and integration kernels. Use `n_jobs` to control parallelism.
-Using every available CPU core (`n_jobs=-1`) may require substantial memory; a
-smaller value is often preferable on shared systems.
+- The kernel sizes above are examples, not universally optimal settings. Use
+  odd dimensions and enough anatomical neighbors.
+- Larger kernels can suppress noise but may blur small structures and increase
+  boundary artifacts. Smaller kernels better localize the reconstruction (also good for LHA) but
+  are more sensitive to noise.
+- Adjust `thresh` if using the magnitude image (e.g., MPRAGE); it controls which
+  neighboring voxels are considered similar to the center voxel. Defaults is 0.05.
+- Start with `n_jobs=-1`. Increase it if memory allows; `n_jobs=-1` uses all
+  available CPU cores. The first run also includes Numba compilation time.
 
-The first execution may include Numba compilation overhead.
 
-## Repository structure
+## Available EPT Data for testing
+You can test `uqEPT` using the datasets described in the MR-EPT
+standardization guideline:
 
-```text
-uqEPT/
-├── assets/
-│   └── uqept-logo.svg
-├── examples/
-│   └── quickstart.ipynb
-├── src/
-│   ├── phase_based_Laplacian_EPT_with_uq.py
-│   ├── B1_based_Laplacian_EPT_with_uq.py
-│   ├── phase_based_surface_integral_EPT_with_uq.py
-│   ├── B1_based_surface_integral_EPT_with_uq.py
-│   ├── anatomical_median_filter.py
-│   └── anatomical_min_uncertainty_weighted_mean_filter.py
-├── figure.png
-├── LICENSE
-└── README.md
-```
+[Download the datasets from Zenodo](https://doi.org/10.5281/zenodo.17879937).
+
+**Reference:** S. Mandija, A. Arduino, C. Cui, et al., “Standardization of MR
+Electrical Properties Tomography: A Guideline From the ISMRM Electro-Magnetic
+Tissue Properties Study Group,” *Journal of Magnetic Resonance Imaging* 63,
+no. 4 (2026): 1204–1207. [https://doi.org/10.1002/jmri.70230](https://doi.org/10.1002/jmri.70230).
+
 
 ## Contact
 
@@ -334,5 +302,4 @@ zhongzheng.he@unistra.fr
 ## License
 
 See [`LICENSE`](LICENSE).
-
 

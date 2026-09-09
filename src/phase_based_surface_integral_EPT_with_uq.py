@@ -2,11 +2,9 @@
 # // Zhongzheng He, PhD, ICube, Université de Strasbourg, Strasbourg, France
 # // Contact: zhongzheng.he@unistra.fr
 # ///////////////////////////////////////////////////////////////////////////////////////////////
-
 import os
 import time
 from typing import Tuple
-
 import numpy as np
 from numpy.linalg import pinv
 from joblib import Parallel, delayed
@@ -14,8 +12,7 @@ from tqdm import tqdm
 import cc3d
 from numba import njit
 
-
-def phase_based_surface_integral_EPT_with_uq(PhiTR,Ref,fit_kernel_size=[11, 11, 11], int_kernel_size=[15,15,15],fit_shape="cube",int_shape="cube",thresh=0.1,omega = 128e6*2*np.pi, 
+def phase_based_surface_integral_EPT_with_uq(PhiTR,Ref,fit_kernel_size=[11, 11, 11], int_kernel_size=[11,11,11],fit_shape="cube",int_shape="cube",thresh=0.05,omega = 128e6*2*np.pi, 
                                              h=None,ROI=None, n_jobs=-1,return_intermediates=False):
     """
     Phase-only surface-integral EPT with uncertainty quantification.
@@ -30,6 +27,53 @@ def phase_based_surface_integral_EPT_with_uq(PhiTR,Ref,fit_kernel_size=[11, 11, 
     For each voxel p, q = [c1, c3, c6] is obtained from a local second-order
     polynomial fit to the real-valued phase. The within-voxel covariance of q is
     retained. Cross-covariances between different voxel-wise fits are neglected.
+
+    Parameters
+    ----------
+    PhiTR : numpy.ndarray
+        3D array of the transceive phase image in radians.
+    Ref : numpy.ndarray
+        3D reference image for anatomical guidance, such as a magnitude image
+        or a tissue segmentation map.
+    fit_kernel_size : list of int, optional
+        Dimensions [kx, ky, kz] of the 2nd order polynomial fitting kernel. All
+        values must be odd. Default is [11, 11, 11].
+    int_kernel_size : list of int, optional
+        Dimensions [kx, ky, kz] of the surface integral kernel. All
+        values must be odd. Default is [11, 11, 11].
+    fit_shape : {'cube', 'ellipse', 'cross'}, optional
+        The base shape of the 2nd order polynomial fitting kernel before anatomical adaptation.
+        Default is 'cube'.
+    int_shape : {'cube', 'ellipse', 'cross'}, optional
+        The base shape of the surface integral kernel before anatomical adaptation.
+        Default is 'cube'. 
+    thresh : float, optional
+        Threshold for anatomical adaptation (0 to 1). Only voxels in the
+        `Ref` image with a relative intensity difference below this threshold
+        (compared to the kernel's central voxel) are included in the fit.
+        Default is 0.05.
+    omega : float, optional
+        Larmor frequency in rad/s (i.e., 2 * pi * frequency).
+        Default is 128e6 * 2 * np.pi, corresponding to a 3T scanner.
+    h : list of float, optional
+        Voxel spacing [dx, dy, dz] in meters. If None, assumes an isotropic
+        voxel size of 1 mm. Default is None.
+    ROI : numpy.ndarray, optional
+        3D binary mask defining the Region of Interest. If None, the ROI is
+        automatically generated from non-zero voxels in the `Ref` image.
+        Default is None.
+    n_jobs : int, optional
+        Number of CPU cores to use for parallel processing.
+        -1 means using all available cores. Default is -1.
+
+    Returns
+    -------
+    sigma : numpy.ndarray
+        The reconstructed 3D electrical conductivity map in Siemens/meter (S/m).
+    unc_sigma : numpy.ndarray
+        A 3D map of the standard deviation of the reconstructed conductivity,
+        representing the voxel-wise uncertainty of the estimation.
+
     """
 
     start_time = time.time()
@@ -219,7 +263,7 @@ def phase_based_surface_integral_EPT_with_uq(PhiTR,Ref,fit_kernel_size=[11, 11, 
     Indx_int, Indy_int, Indz_int = Indices_int[0], Indices_int[1], Indices_int[2]
 
     def process_integral_patch(j):
-        """Compute phase-only SI-EPT and voxel-wise Level-2 uncertainty."""
+        """Compute phase-only SI-EPT and voxel-wise uncertainty."""
         ix, iy, iz = Indx_int[j], Indy_int[j], Indz_int[j]
 
         indx = slice(ix - ikx_radii, ix + ikx_radii + 1)

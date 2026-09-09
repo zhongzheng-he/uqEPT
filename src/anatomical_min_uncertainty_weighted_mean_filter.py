@@ -2,7 +2,6 @@
 # // Zhongzheng He, PhD, ICube, Université de Strasbourg, Strasbourg, France
 # // Contact: zhongzheng.he@unistra.fr
 # ///////////////////////////////////////////////////////////////////////////////////////////////
-
 import numpy as np
 from joblib import Parallel, delayed
 from tqdm import tqdm  # For progress bar
@@ -10,8 +9,8 @@ import time
 import os
 import cc3d
 
-# last modified on 07/07/2026 by Zhongzheng He 
-def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
+# last modified on 09/09/2026 by Zhongzheng He 
+def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_size=[21,21,21], shape="cube", thresh=0.05, ROI=None, n_jobs=-1):
     """
     Applies a 3D filter using an anatomically-guided, uncertainty-based selection.
 
@@ -41,7 +40,7 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
         uncertainty (e.g., standard deviation) of the corresponding voxel in `Im`.
     kernel_size : list of int, optional
         Dimensions [kx, ky, kz] of the filter kernel. All values must be odd.
-        Default is [3, 3, 3].
+        Default is [21, 21, 21].
     shape : {'cube', 'ellipse', 'cross'}, optional
         The base shape of the kernel before anatomical adaptation.
         Default is 'cube'.
@@ -49,9 +48,9 @@ def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_
         Threshold for anatomical adaptation (0 to 1). Only voxels in the
         `Ref` image with a relative intensity difference below this threshold
         (compared to the kernel's central voxel) are included in the
-        filtering process. Default is 0.1.
+        filtering process. Default is 0.05.
     ROI : numpy.ndarray, optional
-        3D binary mask defining the Region of Interest. Filtering is only
+        3D binary mask defining the ROI. Filtering is only
         applied within this region. If None, the ROI is automatically
         generated from non-zero voxels in the `Ref` image. Default is None.
     n_jobs : int, optional

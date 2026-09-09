@@ -2,7 +2,6 @@
 # // Zhongzheng He, PhD, ICube, Université de Strasbourg, Strasbourg, France
 # // Contact: zhongzheng.he@unistra.fr
 # ///////////////////////////////////////////////////////////////////////////////////////////////
-
 import numpy as np
 from scipy.ndimage import label, convolve
 from joblib import Parallel, delayed
@@ -11,8 +10,8 @@ import time
 import os
 import cc3d
 
-# last modified on 07/07/2026
-def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
+# last modified on 09/09/2026
+def anatomical_median_filter(Im,Ref, kernel_size=[21,21,21], shape="cube", thresh=0.05, ROI=None, n_jobs=-1):
     """
     Applies a 3D anatomically-adaptive median filter.
 
@@ -38,7 +37,7 @@ def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0
         or a tissue segmentation map.
     kernel_size : list of int, optional
         Dimensions [kx, ky, kz] of the filter kernel. All values must be odd.
-        Default is [3, 3, 3].
+        Default is [21, 21, 21].
     shape : {'cube', 'ellipse', 'cross'}, optional
         The base shape of the kernel before anatomical adaptation.
         Default is 'cube'.
@@ -48,7 +47,7 @@ def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0
         (compared to the kernel's central voxel) are included in the median
         calculation. Default is 0.1.
     ROI : numpy.ndarray, optional
-        3D binary mask defining the Region of Interest. Filtering is only
+        3D binary mask defining the ROI. Filtering is only
         applied within this region. If None, the ROI is automatically
         generated from non-zero voxels in the `Ref` image. Default is None.
     n_jobs : int, optional

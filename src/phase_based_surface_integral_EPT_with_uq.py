@@ -181,7 +181,7 @@ def phase_based_surface_integral_EPT_with_uq(PhiTR,Ref,fit_kernel_size=[11, 11, 
     valid_fit_map &= ROI
 
     # ==========================================================================================
-    # Stage 2/2: phase surface integral and Level-2 uncertainty propagation
+    # Stage 2/2: phase surface integral and uncertainty propagation
     # ==========================================================================================
     ikx, iky, ikz = int_kernel_size
     ikx_radii, iky_radii, ikz_radii = (ikx - 1) // 2, (iky - 1) // 2, (ikz - 1) // 2
@@ -368,7 +368,7 @@ def _conv3_same_at(mask, kernel, i, j, k):
 
 @njit(cache=True)
 def calculate_surface_integral_phase_and_uncertainty(q_patch,cov_q_patch,Shape_patch, valid_fit_patch, KV,KSx,KSy,KSz,phase_scale_const,ikx,iky,ikz,ikx_radii,iky_radii,ikz_radii):
-    """Numba-accelerated phase-only SI-EPT and Level-2 UQ calculation."""
+    """Numba-accelerated phase-only SI-EPT and UQ calculation."""
     S = 0.0
     V = 0.0
 
@@ -397,12 +397,12 @@ def calculate_surface_integral_phase_and_uncertainty(q_patch,cov_q_patch,Shape_p
     if not valid_fit_patch[ikx_radii, iky_radii, ikz_radii]:
         return sigma, np.inf, S, V
 
-    # Include only voxels with finite q covariance for the Level-2 propagation.
+    # Include only voxels with finite q covariance for the uncertainty propagation.
     Shape_patch &= valid_fit_patch
 
     var_sigma = 0.0
 
-    # Second pass: Level-2 propagation, neglecting cross-voxel covariance.
+    # Second pass: uncertainty propagation, neglecting cross-voxel covariance.
     for i in range(ikx):
         for j in range(iky):
             for k in range(ikz):

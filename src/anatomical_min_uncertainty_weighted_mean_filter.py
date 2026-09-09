@@ -3,7 +3,6 @@
 # // Contact: zhongzheng.he@unistra.fr
 # ///////////////////////////////////////////////////////////////////////////////////////////////
 
-
 import numpy as np
 from joblib import Parallel, delayed
 from tqdm import tqdm  # For progress bar
@@ -12,7 +11,6 @@ import os
 import cc3d
 
 # last modified on 07/07/2026 by Zhongzheng He 
-
 def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_size=[3,3,3], shape="cube", thresh=0.1, ROI=None, n_jobs=-1):
     """
     Applies a 3D filter using an anatomically-guided, uncertainty-based selection.

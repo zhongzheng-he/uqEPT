@@ -13,7 +13,6 @@ import cc3d
 from numba import njit
 
 # last modified on 18/06/2026
-
 def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[5,5,5], shape="cube", thresh=0.1, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
     """
     Reconstructs electrical properties with bivariate uncertainty quantification.

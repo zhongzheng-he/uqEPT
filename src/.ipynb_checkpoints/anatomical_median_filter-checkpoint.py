@@ -24,6 +24,11 @@ def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0
     primarily performed within homogeneous regions, reducing blurring across
     anatomical boundaries.
 
+    References
+    ----------
+    Katscher U, van den Berg CAT. Electric properties tomography: Biochemical, physical and technical background, 
+    evaluation and clinical applications. NMR in Biomedicine. 2017;30(8):e3729. doi:10.1002/nbm.3729
+
     Parameters
     ----------
     Im : numpy.ndarray
@@ -120,7 +125,9 @@ def anatomical_median_filter(Im,Ref, kernel_size=[3,3,3], shape="cube", thresh=0
         Shape_patch = np.abs(Ref_patch - Ref_patch[kx_radii, ky_radii, kz_radii]) <= thresh
         Shape_patch &= Shape
 
-        
+        # Avoid fitting with padded/background voxels.
+        ROI_patch = ROI[indx, indy, indz]
+        Shape_patch &= ROI_patch
     
         # Check if all elements are in shape, i.e., Shape_patch == Shape
         if not np.array_equal(Shape_patch, Shape): 

@@ -175,7 +175,7 @@ def B1_based_surface_integral_EPT_with_uq(B,Ref,fit_kernel_size=[11,11, 11],int_
     valid_fit_map &= ROI
    
     # ==========================================================================================
-    # Stage 2/2: surface integral and Level-2 uncertainty propagation
+    # Stage 2/2: surface integral and uncertainty propagation
     # ==========================================================================================
     ikx, iky, ikz = int_kernel_size
     ikx_radii, iky_radii, ikz_radii = (ikx - 1) // 2, (iky - 1) // 2, (ikz - 1) // 2
@@ -374,7 +374,7 @@ def _conv3_same_at(mask, kernel, i, j, k):
 
 @njit(cache=True)
 def calculate_surface_integral_and_uncertainty(q_patch, cov_q_patch, Shape_patch, valid_fit_patch, KV, KSx, KSy, KSz, alpha, omega_eps0,ikx,iky,ikz,ikx_radii,iky_radii,ikz_radii):
-    """Numba-accelerated volume-denominator SI-EPT and Level-2 UQ calculation."""
+    """Numba-accelerated volume-denominator SI-EPT and UQ calculation."""
     #nx, ny, nz = Shape_patch.shape
 
     S = 0.0 + 0.0j
@@ -413,7 +413,7 @@ def calculate_surface_integral_and_uncertainty(q_patch, cov_q_patch, Shape_patch
     cov_kappa_11 = 0.0
     S_over_V2 = S / (V * V)
 
-    # Second pass: Level-2 propagation, neglecting cross-voxel covariance.
+    # Second pass: uncertainty propagation, neglecting cross-voxel covariance.
     for i in range(ikx):
         for j in range(iky):
             for k in range(ikz):

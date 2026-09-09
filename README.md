@@ -20,9 +20,9 @@ voxel-wise uncertainty propagation and uncertainty-guided post-processing.
   <img src="figure.png" alt="Laplacian-based uqEPT workflow: reconstruction, uncertainty propagation, and uncertainty-guided post-processing" width="730">
 </p>
 
-<p align="center">
+<!-- <p align="center">
   <em>Illustration of Laplacian-based EPT, uncertainty propagation, and uncertainty-guided post-processing.</em>
-</p>
+</p> -->
 
 The current implementation supports:
 
@@ -36,13 +36,24 @@ The current implementation supports:
 
 > **Research software:** this repository is under active development....
 
-## Model scope
+## Installation
 
-Both the Laplacian and surface-integral formulations rely on the LHA: electrical
-properties are assumed to be approximately constant over the effective local
-reconstruction support. Anatomical guidance helps restrict the support to similar tissue regions, 
-but does not guarantee that the assumption holds at tissue boundaries or within heterogeneous regions.
+Clone the development branch and install the required packages:
 
+```bash
+conda create -n uqept -c conda-forge python=3.11 numpy scipy joblib tqdm numba connected-components-3d
+conda activate uqept
+
+git clone --branch test https://github.com/zhongzheng-he/uqEPT.git
+cd uqEPT
+
+# Verify that dependencies and uqEPT functions can be imported
+python -c "import numpy, scipy, joblib, tqdm, numba, cc3d; import src; print('uqEPT imports successful')"
+```
+The repository can then be imported from its root directory:
+```python
+from src import *
+```
 ## Reference
 
 He Z, Lamy J, Arduino A, Zilberti L, Loureiro de Sousa P. Rigorous
@@ -55,22 +66,6 @@ Exhibition*; Cape Town, South Africa; 2026.
 If you use this code, please cite the reference above. A citation for the full
 methodological paper will be added when available.
 
-## Installation
-
-Clone the development branch and install the required packages:
-
-```bash
-git clone --branch test https://github.com/zhongzheng-he/uqEPT.git
-cd uqEPT
-python -m pip install numpy scipy joblib tqdm numba connected-components-3d
-```
-
-Python 3.10 or newer is recommended. The repository can then be imported from
-its root directory:
-
-```python
-from src import phase_based_surface_integral_EPT_with_uq
-```
 
 ## Input conventions
 
@@ -79,12 +74,13 @@ shapes.
 
 | Input | Meaning | Convention |
 |---|---|---|
-| `PhiTR` | Transceive phase | Real-valued array in radians |
-| `B` | Complex B field | Complex-valued array |
-| `Ref` | Anatomical guidance image or segmentation | Normalized internally when values exceed 1 |
+| `PhiTR` | Transceive phase ($\varphi_{tr=\phi^+ + \phi^-}$)| 3D Real-valued array in radians |
+| `B` | Complex B field ($B_1^+$ or $\sqrt{\S_{UTE}}\propto\sqrt{B_1^+B_1^-}$) | 3D Complex-valued array |
+| `Ref` | Segmentation or anatomical guidance image (MPRAGE, T1w,etc...) | Normalized internally when values exceed 1 |
 | `ROI` | mask | Boolean array; defaults to `Ref > 0` |
 | `h` | Voxel spacing | `[dx, dy, dz]` in metres, defaults to`[1e-3,1e-3,1e-3]` |
-| `omega` | Larmor angular frequency | defaults to `128e6*2*np.pi`|
+| `omega` | Larmor angular frequency | defaults to `128e6*2*np.pi` at 3T| 
+|'shape', 'fit_shape','int_shape'| Kernel shape : cube, 
 
 For standard complex Helmholtz-based EPT, a commonly used input is constructed
 as

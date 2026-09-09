@@ -2,11 +2,12 @@
   <img src="assets/uqept-logo.svg" alt="uqEPT" width="340">
 </p>
 
-<h3 align="center">
+<p align="center">
   <strong>u</strong>ncertainty <strong>q</strong>uantification in Helmholtz-Based
   <strong>E</strong>lectrical <strong>P</strong>roperties <strong>T</strong>omography
+  <br>
   with Uncertainty-Guided Post-Processing
-</h3>
+</p>
 
 # uqEPT
 `uqEPT` is a research-oriented Python toolkit for **uncertainty quantification
@@ -19,9 +20,9 @@ voxel-wise uncertainty propagation and uncertainty-guided post-processing.
   <img src="figure.png" alt="Laplacian-based uqEPT workflow: reconstruction, uncertainty propagation, and uncertainty-guided post-processing" width="730">
 </p>
 
-<p align="center">
+<!-- <p align="center">
   <em>Illustration of Laplacian-based EPT, uncertainty propagation, and uncertainty-guided post-processing.</em>
-</p>
+</p> -->
 
 The current implementation supports:
 
@@ -35,13 +36,24 @@ The current implementation supports:
 
 > **Research software:** this repository is under active development....
 
-## Model scope
+## Installation
 
-Both the Laplacian and surface-integral formulations rely on the LHA: electrical
-properties are assumed to be approximately constant over the effective local
-reconstruction support. Anatomical guidance helps restrict the support to similar tissue regions, 
-but does not guarantee that the assumption holds at tissue boundaries or within heterogeneous regions.
+Clone the development branch and install the required packages:
 
+```bash
+conda create -n uqept -c conda-forge python=3.11 numpy scipy joblib tqdm numba connected-components-3d
+conda activate uqept
+
+git clone --branch test https://github.com/zhongzheng-he/uqEPT.git
+cd uqEPT
+
+# Verify that dependencies and uqEPT functions can be imported
+python -c "import numpy, scipy, joblib, tqdm, numba, cc3d; import src; print('uqEPT imports successful')"
+```
+The repository can then be imported from its root directory:
+```python
+from src import *
+```
 ## Reference
 
 He Z, Lamy J, Arduino A, Zilberti L, Loureiro de Sousa P. Rigorous
@@ -54,22 +66,6 @@ Exhibition*; Cape Town, South Africa; 2026.
 If you use this code, please cite the reference above. A citation for the full
 methodological paper will be added when available.
 
-## Installation
-
-Clone the development branch and install the required packages:
-
-```bash
-git clone --branch test https://github.com/zhongzheng-he/uqEPT.git
-cd uqEPT
-python -m pip install numpy scipy joblib tqdm numba connected-components-3d
-```
-
-Python 3.10 or newer is recommended. The repository can then be imported from
-its root directory:
-
-```python
-from src import phase_based_surface_integral_EPT_with_uq
-```
 
 ## Input conventions
 
@@ -78,18 +74,19 @@ shapes.
 
 | Input | Meaning | Convention |
 |---|---|---|
-| `PhiTR` | Transceive phase | Real-valued array in radians |
-| `B` | Complex transmit-field surrogate | Complex-valued array |
-| `Ref` | Anatomical guidance image or segmentation | Normalized internally when values exceed 1 |
-| `ROI` | Reconstruction mask | Boolean array; defaults to `Ref > 0` |
-| `h` | Voxel spacing | `[dx, dy, dz]` in metres |
-| `omega` | Larmor angular frequency | Radians per second |
+| `PhiTR` | Transceive phase ($\varphi_{tr=\phi^+ + \phi^-}$)| 3D Real-valued array in radians |
+| `B` | Complex B field ($B_1^+$ or $\sqrt{\S_{UTE}}\propto\sqrt{B_1^+B_1^-}$) | 3D Complex-valued array |
+| `Ref` | Segmentation or anatomical guidance image (MPRAGE, T1w,etc...) | Normalized internally when values exceed 1 |
+| `ROI` | mask | Boolean array; defaults to `Ref > 0` |
+| `h` | Voxel spacing | `[dx, dy, dz]` in metres, defaults to`[1e-3,1e-3,1e-3]` |
+| `omega` | Larmor angular frequency | defaults to `128e6*2*np.pi` at 3T| 
+|'shape', 'fit_shape','int_shape'| Kernel shape : cube, 
 
 For standard complex Helmholtz-based EPT, a commonly used input is constructed
 as
 
 ```python
-B = np.abs(B1_plus) * np.exp(1j * PhiTR / 2.0)
+B = np.abs(B1_plus) * np.exp(1j * PhiTR / 2)
 ```
 
 where `PhiTR` is expressed in radians. For image-based EPT, `B` may instead be
@@ -282,27 +279,6 @@ Kernel sizes should be reported together with voxel spacing. They should be
 validated for the SNR, anatomy, EPT formulation, and target structure rather
 than treated as universal defaults.
 
-## Interpretation of uncertainty
-
-The returned uncertainty maps are propagated standard uncertainties under the
-implemented local residual and covariance model. They should not be interpreted
-as ground-truth reconstruction errors.
-
-In particular:
-
-- uncertainty can reflect measurement noise, fitting residuals, and numerical
-  instability;
-- smooth systematic bias may not produce large residuals and can therefore be
-  underestimated;
-- the code applies a biophysical-range penalty to implausible reconstructed
-  values;
-- in SI-EPT, within-fit covariance is propagated, whereas cross-covariance
-  between neighboring overlapping polynomial fits is currently neglected; and
-- quantitative calibration requires validation with repeated noise realizations
-  or repeated measurements, normalized errors, and interval coverage.
-
-Strong uncertainty-error correlation supports relative spatial reliability
-ranking, but does not by itself establish calibration of uncertainty magnitude.
 
 ## Example notebook
 

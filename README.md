@@ -11,7 +11,7 @@
 
 # uqEPT
 `uqEPT` is a Python toolkit for **uncertainty quantification
-in Helmholtz-based electrical properties tomography (EPT)**. It supports
+in Helmholtz-based Electrical Properties Tomography (EPT)**. It supports
 Laplacian and surface-integral formulations under the **local homogeneity
 assumption (LHA)**, combining anatomically adaptive reconstruction with
 voxel-wise uncertainty propagation and uncertainty-guided post-processing.
@@ -283,7 +283,7 @@ sigma_f_min_unc = anatomical_min_uncertainty_weighted_mean_filter(
   boundary artifacts. Smaller kernels better localize the reconstruction (also good for LHA) but
   are more sensitive to noise.
 - Adjust `thresh` if using the magnitude image (e.g., MPRAGE); it controls which
-  neighboring voxels are considered similar to the center voxel. The examples use 0.05; the function default is 0.1.
+  neighboring voxels are considered similar to the center voxel. The function default is 0.05.
 - Start with `n_jobs=1`. Increase it if memory allows; `n_jobs=-1` uses all
   available CPU cores. The first run also includes Numba compilation time.
 

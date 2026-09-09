@@ -39,7 +39,7 @@ methodological paper will be added when available.
 
 ## Installation
 
-Clone and install the required packages using `conda:
+Clone and install the required packages using `conda`:
 
 ```bash
 conda create -n uqept -c conda-forge python=3.11 numpy scipy joblib tqdm numba connected-components-3d
@@ -84,15 +84,16 @@ $$
 Conductivity and relative permittivity follow as
 
 $$
-\widehat{\sigma}=\operatorname{Re}(\widehat{\kappa}),
+\widehat{\sigma}=\mathrm{Re}(\widehat{\kappa}),
 \qquad
 \widehat{\varepsilon}_r
-=\frac{\operatorname{Im}(\widehat{\kappa})}{\omega\varepsilon_0}.
+=\frac{\mathrm{Im}(\widehat{\kappa})}{\omega\varepsilon_0}.
 $$
 
 Both HB and IB use the same reconstruction function:
 
 ```python
+import numpy as np
 from src import B1_based_Laplacian_EPT_with_uq
 
 sigma, epsilon_r, unc_sigma, unc_epsilon_r = B1_based_Laplacian_EPT_with_uq(
@@ -126,6 +127,7 @@ permittivity are extracted from $\widehat{\kappa}_{\mathrm{SI}}$ in the same
 way as for Laplacian EPT.
 
 ```python
+import numpy as np
 from src import B1_based_surface_integral_EPT_with_uq
 
 sigma, epsilon_r, unc_sigma, unc_epsilon_r = (
@@ -142,6 +144,7 @@ sigma, epsilon_r, unc_sigma, unc_epsilon_r = (
         thresh=0.05,                # anatomical similarity threshold [0,1]
         n_jobs=-1,                  # number of parallel workers,-1 if using all available cores
     )
+)
 ```
 
 
@@ -155,6 +158,7 @@ $$
 =\frac{\nabla^2\varphi_{\mathrm{tr}}}{2\mu_0\omega}.
 $$
 ```python
+import numpy as np
 from src import phase_based_Laplacian_EPT_with_uq
 
 sigma, unc_sigma = phase_based_Laplacian_EPT_with_uq(
@@ -183,6 +187,7 @@ $$
 $$
 
 ```python
+import numpy as np
 from src import phase_based_surface_integral_EPT_with_uq
 
 sigma, unc_sigma = phase_based_surface_integral_EPT_with_uq(
@@ -219,10 +224,11 @@ neighborhood $\mathcal{N}_p$:
 
 $$
 \widehat{x}_{\mathrm{median}}(p)
-=\operatorname{median}_{q\in\mathcal{N}_p}x(q).
+=\mathrm{median}_{q\in\mathcal{N}_p}x(q).
 $$
 
 ```python
+import numpy as np
 from src import anatomical_median_filter
 
 sigma_f_med = anatomical_median_filter(
@@ -253,6 +259,7 @@ uncertainty. Lower-uncertainty estimates receive greater weight. The code
 falls back to the subset median when the weight sum is non-finite or too small.
 
 ```python
+import numpy as np
 from src import anatomical_min_uncertainty_weighted_mean_filter
 
 sigma_f_min_unc = anatomical_min_uncertainty_weighted_mean_filter(
@@ -276,8 +283,8 @@ sigma_f_min_unc = anatomical_min_uncertainty_weighted_mean_filter(
   boundary artifacts. Smaller kernels better localize the reconstruction (also good for LHA) but
   are more sensitive to noise.
 - Adjust `thresh` if using the magnitude image (e.g., MPRAGE); it controls which
-  neighboring voxels are considered similar to the center voxel. Defaults is 0.05.
-- Start with `n_jobs=-1`. Increase it if memory allows; `n_jobs=-1` uses all
+  neighboring voxels are considered similar to the center voxel. The examples use 0.05; the function default is 0.1.
+- Start with `n_jobs=1`. Increase it if memory allows; `n_jobs=-1` uses all
   available CPU cores. The first run also includes Numba compilation time.
 
 
@@ -302,4 +309,3 @@ zhongzheng.he@unistra.fr
 ## License
 
 See [`LICENSE`](LICENSE).
-

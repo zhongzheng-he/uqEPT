@@ -84,7 +84,6 @@ def B1_based_surface_integral_EPT_with_uq(B,Ref,fit_kernel_size=[11,11, 11],int_
         quantifying the voxel-wise uncertainty.
 
     """
-    """
 
     start_time = time.time()
     # ------------------------------------------------------------------------------------------

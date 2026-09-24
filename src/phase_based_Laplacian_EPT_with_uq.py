@@ -80,8 +80,6 @@ def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[11,11,11], shape=
 
     """
     start_time = time.time()
-    print("I am new")
-    
     # Input verification
     if np.iscomplexobj(PhiTR):
         raise ValueError("PhiTR must be real-valued for the phase-only version.")

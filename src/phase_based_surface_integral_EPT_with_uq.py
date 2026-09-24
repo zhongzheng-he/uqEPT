@@ -475,7 +475,7 @@ def calculate_surface_integral_phase_and_uncertainty(q_patch,cov_q_patch,Shape_p
                     var_sigma += d2 * cov_q_patch[i, j, k, 2, 2] * d2
 
     
-    unc_sigma = (np.sqrt(var_sigma) if np.isfinite(var_sigma) and var_sigma >= 0 else np.inf)
+    unc_sigma = np.sqrt(np.abs(var_sigma))
     return sigma, unc_sigma, S, V
 
 

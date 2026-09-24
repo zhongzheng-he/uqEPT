@@ -243,8 +243,8 @@ def calculate_conductivity_and_uncertainty(F_adap, C, F_pinv, PhiTR_patch_in_sha
     # Propagate uncertainty
     cov_C = var_residual * M
     var_sigma = J @ cov_C @ J.T
-    # the variance should not be negative
-    unc_sigma = (np.sqrt(var_sigma) if np.isfinite(var_sigma) and var_sigma >= 0 else np.inf)
+  
+    unc_sigma = np.sqrt(np.abs(var_sigma))
     
     return sigma, unc_sigma
     

@@ -295,18 +295,9 @@ def calculate_EPs_and_uncertainties(F_adap, C, F_pinv, B_patch_in_shape,j_mu0_om
     # --- Uncertainty ---
     cov_kappa = J_biv @ cov_C_bivariate @ J_biv.T 
     
-    # unc_sigma = np.sqrt(np.abs(cov_kappa[0,0])) #real
-    # unc_epsilon = np.sqrt(np.abs(cov_kappa[1, 1]))/omega_eps0 #imaginairy
-    # return sigma,epsilon,unc_sigma, unc_epsilon
-    
-    # the variance should not be negative
-    cov_kappa_00=cov_kappa[0, 0]
-    cov_kappa_11=cov_kappa[1, 1]
-    unc_sigma = (np.sqrt(cov_kappa_00) if np.isfinite(cov_kappa_00) and cov_kappa_00 >= 0 else np.inf)
-    unc_epsilon = (np.sqrt(cov_kappa_11) / omega_eps0 if np.isfinite(cov_kappa_11) and cov_kappa_11 >= 0 else np.inf)
-    
-    return sigma, epsilon, unc_sigma, unc_epsilon
-
+    unc_sigma = np.sqrt(np.abs(cov_kappa[0,0])) #real
+    unc_epsilon = np.sqrt(np.abs(cov_kappa[1, 1]))/omega_eps0 #imaginairy
+    return sigma,epsilon,unc_sigma, unc_epsilon
 
 def unc_penalization(mean, unc, Rmin=0, Rmax=2.5, k=1.0):
     """

@@ -514,9 +514,8 @@ def calculate_surface_integral_and_uncertainty(q_patch, cov_q_patch, Shape_patch
                             cov_kappa_11 += row1_a * cval * row1_b
 
 
-    # the variance should not be negative
-    unc_sigma = (np.sqrt(cov_kappa_00) if np.isfinite(cov_kappa_00) and cov_kappa_00 >= 0 else np.inf)
-    unc_epsilon = (np.sqrt(cov_kappa_11) / omega_eps0 if np.isfinite(cov_kappa_11) and cov_kappa_11 >= 0 else np.inf)
+    unc_sigma = np.sqrt(np.abs(cov_kappa_00)) #real
+    unc_epsilon = np.sqrt(np.abs(cov_kappa_11)) / omega_eps0 #imaginairy
 
     return sigma, epsilon, unc_sigma, unc_epsilon, S, V
 

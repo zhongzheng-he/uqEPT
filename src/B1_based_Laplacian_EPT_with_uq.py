@@ -242,7 +242,10 @@ def B1_based_Laplacian_EPT_with_uq(B, Ref, kernel_size=[11,11,11], shape="cube",
 def calculate_EPs_and_uncertainties(F_adap, C, F_pinv, B_patch_in_shape,j_mu0_omega, omega_eps0, J_c, J_biv):
 
     Lap_B = 2 * (C[2] + C[5] + C[9])# Laplacian of B
-    B1 = C[0]  # complex
+    B1 = C[0]  # avoid divided by 0
+    if np.abs(B1) == 0:
+        return np.nan, np.nan, np.inf, np.inf
+
     denom = j_mu0_omega * B1
 
     kappa = Lap_B / denom

@@ -12,7 +12,7 @@ import cc3d
 from scipy.optimize import minimize
 from numba import njit
 
-# last modified on 18/09/2026: adding matrix rank (rank>10) and positive variance (var_sigma>=0) verification 
+# last modified on 25/09/2026: adding matrix rank verification 
 def phase_based_Laplacian_EPT_with_uq(PhiTR, Ref, kernel_size=[11,11,11], shape="cube", thresh=0.05, omega=128e6*2*np.pi, h=None, ROI=None, n_jobs=-1):
     """
     Reconstructs electrical conductivity and its uncertainty using phase-based EPT.

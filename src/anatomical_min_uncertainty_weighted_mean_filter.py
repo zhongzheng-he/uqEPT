@@ -9,7 +9,7 @@ import time
 import os
 import cc3d
 
-# last modified on 18/09/2026 by Zhongzheng He 
+# last modified on 18/09/2026: remove inf uncertainties before selection.
 def anatomical_min_uncertainty_weighted_mean_filter(Im,Ref, uncertainty, kernel_size=[21,21,21], shape="cube", thresh=0.05, ROI=None, n_jobs=-1):
     """
     Applies a 3D filter using an anatomically-guided, uncertainty-based selection.

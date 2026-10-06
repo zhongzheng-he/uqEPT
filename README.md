@@ -118,8 +118,8 @@ For an integration region $\Omega$ with outward unit normal $\mathbf{n}$,
 
 $$
 \widehat{\kappa}_{\mathrm{SI}}
-=\frac{\displaystyle\oint_{\partial\Omega}\nabla B\cdot\mathbf{n}\,dS}
-{\displaystyle j\mu_0\omega\int_\Omega B\,dV}.
+=\frac{\displaystyle\oint_{\partial\Omega}\nabla B\cdot\mathbf{n}dS}
+{\displaystyle j\mu_0\omega\int_\Omega B dV}.
 $$
 
 Use the same HB or IB field `B` defined above. Conductivity and relative
@@ -181,9 +181,8 @@ Similarly, the phase-only SI estimator is
 $$
 \widehat{\sigma}_{\mathrm{PB,SI}}
 =\frac{\displaystyle\oint_{\partial\Omega}
-\nabla\varphi_{\mathrm{tr}}\cdot\mathbf{n}\,dS}
-{2\mu_0\omega V_\Omega},
-\qquad V_\Omega=\int_\Omega dV.
+\nabla\varphi_{\mathrm{tr}}\cdot\mathbf{n}dS}
+{2\mu_0\omega \int_\Omega dV}
 $$
 
 ```python

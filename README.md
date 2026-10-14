@@ -16,6 +16,13 @@ Laplacian and surface-integral formulations under the **local homogeneity
 assumption (LHA)**, combining anatomically adaptive reconstruction with
 voxel-wise uncertainty propagation and uncertainty-guided post-processing.
 
+> **New users:** start with the
+> [tutorial](tutorial/tutorial.ipynb). This Jupyter notebook
+> demonstrates raw reconstruction, uncertainty quantification, and
+> uncertainty-guided post-processing on the availaible simulated brain datasets
+> without and with noise (SNR=50). See [Tutorial and available EPT test data](#tutorial-and-available-ept-test-data)
+> for the data download and setup instructions.
+
 <p align="center">
   <img src="figure.png" alt="Laplacian-based uqEPT workflow: reconstruction, uncertainty propagation, and uncertainty-guided post-processing" width="730">
 </p>
@@ -30,7 +37,7 @@ The current implementation supports:
 He Z, Lamy J, Arduino A, Zilberti L, Loureiro de Sousa P. Rigorous
 Uncertainty Quantification for Helmholtz-based EPT: Application to
 Uncertainty-Guided Post-processing. In: *2026 ISMRM-ISMRT Annual Meeting and
-Exhibition*; Cape Town, South Africa; 2026.
+Exhibition*; Cape Town, South Africa; 2026. Program #567-06-007.
 
 [Download the conference abstract](https://hal.science/hal-05493748v1/file/Abstract%20%2300099.pdf)
 
@@ -51,6 +58,14 @@ cd uqEPT
 # Verify that dependencies and uqEPT functions can be imported
 python -c "import numpy, scipy, joblib, tqdm, numba, cc3d; from src import *; print('uqEPT imports successful')"
 ```
+
+To run the [tutorial notebook](tutorial/tutorial.ipynb), also install its
+notebook and plotting dependencies:
+
+```bash
+conda install -c conda-forge jupyterlab matplotlib cmcrameri
+```
+
 ## Complex-valued EPT (HB and IB)
 
 HB and IB reconstruct **conductivity and relative permittivity** from a complex
@@ -227,7 +242,6 @@ $$
 $$
 
 ```python
-import numpy as np
 from src import anatomical_median_filter
 
 sigma_f_med = anatomical_median_filter(
@@ -258,7 +272,6 @@ uncertainty. Lower-uncertainty estimates receive greater weight. The code
 falls back to the subset median when the weight sum is non-finite or too small.
 
 ```python
-import numpy as np
 from src import anatomical_min_uncertainty_weighted_mean_filter
 
 sigma_f_min_unc = anatomical_min_uncertainty_weighted_mean_filter(
@@ -287,9 +300,11 @@ sigma_f_min_unc = anatomical_min_uncertainty_weighted_mean_filter(
   available CPU cores. The first run also includes Numba compilation time.
 
 
-## Available EPT Data for testing
-You can test `uqEPT` using the datasets described in the MR-EPT
-standardization guideline:
+## Tutorial and available EPT test data
+
+The [tutorial](tutorial/tutorial.ipynb) provides a worked
+example for testing `uqEPT` using the public datasets accompanying the
+MR-EPT standardization guideline.
 
 [Download the datasets from Zenodo](https://doi.org/10.5281/zenodo.17879937).
 
@@ -297,6 +312,24 @@ standardization guideline:
 Electrical Properties Tomography: A Guideline From the ISMRM Electro-Magnetic
 Tissue Properties Study Group,” *Journal of Magnetic Resonance Imaging* 63,
 no. 4 (2026): 1204–1207. [https://doi.org/10.1002/jmri.70230](https://doi.org/10.1002/jmri.70230).
+
+### What the tutorial covers
+
+- Loading the MATLAB input data and preparing the complex B1 field,
+  transceive phase, segmentation reference, and reconstruction mask.
+- HB and PB reconstruction using both Laplacian and surface-integral
+  formulations, with voxel-wise uncertainty maps.
+- Applying the proposed anatomical minimum-uncertainty weighted-mean filter.
+- Displaying raw reconstructions, uncertainty maps, filtered reconstructions,
+  and reference maps side by side. HB includes conductivity and relative
+  permittivity; PB includes conductivity only.
+
+The notebook uses two simulated brain datasets (noiseless + with noise $SNR=50$):
+
+| Dataset | Input directory | Fitting kernel | SI integration kernel | Post-processing kernel |
+|---|---|---|---|---|
+| A: without noise | `A Simulated Brain without tumor without noise` | 3 × 3 × 3 | 3 × 3 × 3 | 21 × 21 × 21 |
+| B: with noise | `B Simulated Brain without tumor with noise` | 11 × 11 × 11 | 11 × 11 × 11 | 21 × 21 × 21 |
 
 
 ## Contact
